@@ -1,0 +1,3 @@
+pydub
+eyed3
+Pillow
