@@ -1,3 +1,5 @@
 pydub
 eyed3
-Pillow
+pillow 
+mutagen 
+opencv-python
