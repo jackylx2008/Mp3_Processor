@@ -7,8 +7,10 @@ import sys
 import cv2
 import eyed3
 import numpy as np
+from mutagen.asf import ASF, ASFByteArrayAttribute
 from mutagen.id3 import APIC, ID3
 from mutagen.mp3 import MP3
+from mutagen.mp4 import MP4, MP4Cover
 from PIL import Image, ImageDraw, ImageFont
 
 # 动态添加项目根目录到 sys.path
@@ -210,89 +212,124 @@ def add_text_to_image(
     return img_with_text
 
 
-def remove_existing_cover(mp3_file_path):
+def remove_existing_cover(audio_file_path):
     """
-    删除 MP3 文件中已有的封面图片，确保不会因缺少标签而报错。
-    """
-    audiofile = eyed3.load(mp3_file_path)
-    if audiofile.tag is None:
-        audiofile.initTag()
-        logger.warning("'%s' 没有 ID3 标签，已初始化。", mp3_file_path)
-
-    if audiofile.tag.images:
-        logger.info("'%s' 已有封面，正在删除旧封面。", mp3_file_path)
-        audiofile.tag.images.remove("")
-        audiofile.tag.save()
-    else:
-        logger.info("'%s' 没有检测到封面，无需删除。", mp3_file_path)
-
-
-def add_cover_to_mp3(mp3_file_path, cover_image_path):
-    """
-    为 MP3 文件添加封面，使用 mutagen 确保兼容性。
+    删除 MP3 或 M4A 文件中已有的封面图片。
     """
     try:
-        audio = MP3(mp3_file_path, ID3=ID3)
-        if audio.tags is None:
-            audio.add_tags()
+        if audio_file_path.lower().endswith(".mp3"):
+            audiofile = eyed3.load(audio_file_path)
+            if audiofile.tag is None:
+                audiofile.initTag()
+                logger.warning("'%s' 没有 ID3 标签，已初始化。", audio_file_path)
+            if audiofile.tag.images:
+                logger.info("'%s' 已有封面，正在删除旧封面。", audio_file_path)
+                audiofile.tag.images.remove("")
+                audiofile.tag.save()
+        elif audio_file_path.lower().endswith(".m4a"):
+            audio = MP4(audio_file_path)
+            if "covr" in audio.tags:
+                logger.info("'%s' 已有封面，正在删除旧封面。", audio_file_path)
+                audio.tags["covr"] = []
+                audio.save()
+        elif audio_file_path.lower().endswith(".wma"):
+            audio = ASF(audio_file_path)
+            if "WM/Picture" in audio:
+                logger.info("'%s' 已有封面，正在删除旧封面。", audio_file_path)
+                audio.pop("WM/Picture")
+                audio.save()
+    except Exception as e:
+        logger.error("无法删除 '%s' 的封面: %s", audio_file_path, e)
 
+
+def add_cover_to_audio(audio_file_path, cover_image_path):
+    """
+    为 MP3、M4A 或 WMA 文件添加封面。
+    """
+    try:
         with open(cover_image_path, "rb") as img_file:
+            image_data = img_file.read()
+
+        if audio_file_path.lower().endswith(".mp3"):
+            audio = MP3(audio_file_path, ID3=ID3)
+            if audio.tags is None:
+                audio.add_tags()
             audio.tags.add(
                 APIC(
-                    encoding=3,  # UTF-8 编码
+                    encoding=3,
                     mime="image/jpeg",
-                    type=3,  # 封面类型：Front cover
+                    type=3,
                     desc="Cover",
-                    data=img_file.read(),
+                    data=image_data,
                 )
             )
-        audio.save()
-        logger.info("封面已成功添加到 '%s'。", mp3_file_path)
+            audio.save()
+        elif audio_file_path.lower().endswith(".m4a"):
+            audio = MP4(audio_file_path)
+            audio["covr"] = [MP4Cover(image_data, MP4Cover.FORMAT_PNG)]
+            audio.save()
+        elif audio_file_path.lower().endswith(".wma"):
+            audio = ASF(audio_file_path)
+            audio["WM/Picture"] = [
+                ASFByteArrayAttribute(
+                    b"\x03"  # 图片类型（3 表示封面）
+                    + b"\x00\x00\x00"  # MIME 类型长度
+                    + "image/jpeg".encode("utf-16-le")
+                    + b"\x00"  # MIME 类型
+                    + b"\x00\x00\x00"  # 描述长度
+                    + "Cover".encode("utf-16-le")
+                    + b"\x00"  # 描述
+                    + image_data  # 图片数据
+                )
+            ]
+            audio.save()
+        logger.info("封面已成功添加到 '%s'。", audio_file_path)
     except Exception as e:
-        logger.error("无法为 '%s' 添加封面: %s", mp3_file_path, e)
+        logger.error("无法为 '%s' 添加封面: %s", audio_file_path, e)
 
 
-def process_mp3_folder(
-    mp3_folder, base_cover_image, split_char, fontpath="./Yahei.ttf"
+def process_audio_folder(
+    audio_folder, base_cover_image, split_char, fontpath="./Yahei.ttf"
 ):
     """
-    批量处理文件夹中的 MP3 文件，根据文件名生成带文字的封面，并嵌入到 MP3 文件中。
+    批量处理文件夹中的 MP3 和 M4A 文件，根据文件名生成带文字的封面，并嵌入到音频文件中。
     """
-    for file in os.listdir(mp3_folder):
-        if file.lower().endswith(".mp3"):
-            mp3_file_path = os.path.join(mp3_folder, file)
-            logger.info("正在处理文件: %s", mp3_file_path)
+
+    for file in os.listdir(audio_folder):
+        if file.lower().endswith((".mp3", ".m4a", ".wma")):
+            audio_file_path = os.path.join(audio_folder, file)
+            logger.info("正在处理文件: %s", audio_file_path)
 
             # 提取文件名中的信息作为封面文字
-            filename = os.path.splitext(file)[0]
-            parts = filename.split(split_char)
-            if len(parts) >= 2:
-                title = parts[0].strip() + split_char
-                description = parts[1].strip()
-            else:
-                title = filename
-                description = ""
+            # filename = os.path.splitext(file)[0]
+            # parts = filename.split(split_char)
+            # if len(parts) >= 2:
+            #     title = parts[0].strip() + split_char
+            #     description = parts[1].strip()
+            # else:
+            #     title = filename
+            #     description = ""
 
             # 在封面图片上添加文字
-            output_cover_image = os.path.join(mp3_folder, "temp_cover.jpg")
-            add_text_to_image(
-                src_pic=base_cover_image,
-                des_pic=output_cover_image,
-                msg1=title,
-                msg2=description,
-                fontpath=fontpath,
-                font_color=(255, 255, 255, 0),  # 白色字体
-                font_size=120,
-                font_offset=150,
-                init_pos=0.1,
-            )
+            output_cover_image = base_cover_image
+            # add_text_to_image(
+            #     src_pic=base_cover_image,
+            #     des_pic=output_cover_image,
+            #     msg1=title,
+            #     msg2=description,
+            #     fontpath=fontpath,
+            #     font_color=(255, 255, 255, 0),  # 白色字体
+            #     font_size=120,
+            #     font_offset=150,
+            #     init_pos=0.1,
+            # )
 
             # 删除已有封面并添加新封面
-            remove_existing_cover(mp3_file_path)
-            add_cover_to_mp3(mp3_file_path, output_cover_image)
+            # remove_existing_cover(audio_file_path)
+            add_cover_to_audio(audio_file_path, output_cover_image)
 
             # 删除临时封面文件
-            os.remove(output_cover_image)
+            # os.remove(output_cover_image)
             logger.info("'%s' 处理完成！", file)
 
 
@@ -308,14 +345,18 @@ def batch_crop_images():
 
 
 if __name__ == "__main__":
-    mp3_folder = "./mp3_files/output"  # MP3 文件夹路径
-    base_cover_image = "./assets/cover_images/Harry_Pot_4.png"  # 封面图片路径
+    # batch_crop_images()
+    for i in range(2, 8):
+        audio_folder = (
+            f"/Users/liuxin/CloudStation/有声书/哈利·波特/哈利波特（7部全集）/第{i}部"
+        )
+        cover_image_path = f"./assets/cover_images/Harry_{i}.png"
 
-    if not os.path.exists(mp3_folder):
-        logger.error("指定的文件夹 '%s' 不存在。", mp3_folder)
-    elif not os.path.isfile(base_cover_image):
-        logger.error("指定的封面图片 '%s' 不存在。", base_cover_image)
-    else:
-        logger.info("开始为 '%s' 中的 MP3 文件添加封面。", mp3_folder)
-        process_mp3_folder(mp3_folder, base_cover_image, split_char="》")
-        logger.info("所有 MP3 文件封面处理完成。")
+        if not os.path.exists(audio_folder):
+            logger.error("指定的文件夹 '%s' 不存在。", audio_folder)
+        elif not os.path.isfile(cover_image_path):
+            logger.error("指定的封面图片 '%s' 不存在。", cover_image_path)
+        else:
+            logger.info("开始为 '%s' 中的音频文件添加封面。", audio_folder)
+            process_audio_folder(audio_folder, cover_image_path, split_char="》")
+            logger.info("所有音频文件封面处理完成。")

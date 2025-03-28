@@ -120,6 +120,30 @@ def precheck_mp3_file(mp3_file):
     return True
 
 
+def split_multiple_mp3_single_thread(
+    input_dir,
+    split_duration=None,
+    split_size=None,
+    output_dir="./mp3_files/output",
+):
+    mp3_files = glob.glob(os.path.join(input_dir, "*.mp3"))
+    if not mp3_files:
+        logger.warning("No MP3 files found in directory: %s", input_dir)
+        return []
+
+    all_output_files = []
+
+    for mp3_file in mp3_files:
+        if not precheck_mp3_file(mp3_file):
+            continue
+        logger.info("Processing file: %s", mp3_file)
+        result = split_mp3(mp3_file, split_duration, split_size, output_dir)
+        if result:
+            all_output_files.extend(result)
+
+    return all_output_files
+
+
 def split_multiple_mp3_parallel(
     input_dir,
     split_duration=None,
@@ -154,5 +178,5 @@ def split_multiple_mp3_parallel(
 
 if __name__ == "__main__":
     logger.info("Begin batch processing!")
-    split_multiple_mp3_parallel("./mp3_files/input", split_duration=15)
+    split_multiple_mp3_parallel("./mp3_files/input", split_duration=30)
     logger.info("Batch processing completed!")
