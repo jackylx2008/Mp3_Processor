@@ -29,6 +29,10 @@ def images_cropper(
     """
     批量裁剪图片，PNG 文件保持原始清晰度和透明度。
     """
+    if not os.path.exists(input_dir):
+        logger.error("输入文件夹不存在: %s", input_dir)
+        return
+
     logger.info(
         "开始批量裁剪图片，输入文件夹: %s, 输出文件夹: %s", input_dir, output_dir
     )
@@ -294,6 +298,13 @@ def process_audio_folder(
     """
     批量处理文件夹中的 MP3 和 M4A 文件，根据文件名生成带文字的封面，并嵌入到音频文件中。
     """
+    if not os.path.exists(audio_folder):
+        logger.error("音频文件夹不存在: %s", audio_folder)
+        return
+
+    if not os.path.exists(base_cover_image):
+        logger.error("封面图片不存在: %s", base_cover_image)
+        return
 
     for file in os.listdir(audio_folder):
         if file.lower().endswith((".mp3", ".m4a", ".wma")):
@@ -346,17 +357,20 @@ def batch_crop_images():
 
 if __name__ == "__main__":
     # batch_crop_images()
-    for i in range(2, 8):
-        audio_folder = (
-            f"/Users/liuxin/CloudStation/有声书/哈利·波特/哈利波特（7部全集）/第{i}部"
-        )
-        cover_image_path = f"./assets/cover_images/Harry_{i}.png"
-
-        if not os.path.exists(audio_folder):
-            logger.error("指定的文件夹 '%s' 不存在。", audio_folder)
-        elif not os.path.isfile(cover_image_path):
-            logger.error("指定的封面图片 '%s' 不存在。", cover_image_path)
-        else:
-            logger.info("开始为 '%s' 中的音频文件添加封面。", audio_folder)
-            process_audio_folder(audio_folder, cover_image_path, split_char="》")
-            logger.info("所有音频文件封面处理完成。")
+    # for i in range(1, 8):
+    #     audio_folder = f"C:/Users/bcjt_/OneDrive/Desktop/哈利波特（7部全集）/第{i}部"
+    #     cover_image_path = f"./assets/cover_images/Harry_{i}.png"
+    #
+    #     if not os.path.exists(audio_folder):
+    #         logger.error("指定的文件夹 '%s' 不存在。", audio_folder)
+    #     elif not os.path.isfile(cover_image_path):
+    #         logger.error("指定的封面图片 '%s' 不存在。", cover_image_path)
+    #     else:
+    #         logger.info("开始为 '%s' 中的音频文件添加封面。", audio_folder)
+    #         process_audio_folder(audio_folder, cover_image_path, split_char="》")
+    #         logger.info("所有音频文件封面处理完成。")
+    process_audio_folder(
+        "C:/Users/bcjt_/OneDrive/Desktop/《纳尼亚传奇》",
+        f"./assets/cover_images/IMG_0432.png",
+        split_char="",
+    )

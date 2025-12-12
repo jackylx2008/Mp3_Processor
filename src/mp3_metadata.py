@@ -30,7 +30,7 @@ def modify_audio_tags(audio_file, artist=None, album=None):
     """修改 MP3 或 M4A 文件的元数据"""
     try:
         title = os.path.splitext(os.path.basename(audio_file))[0]  # 以文件名作为标题
-        title = re.sub(r"(第)0+(\d+)(集)", r"\1\2\3", title)
+        title = re.sub(r"(第)0+(\d+)(集)", r"\1\2\3", title)  # 去零
 
         if audio_file.endswith(".mp3"):
             audio = EasyID3(audio_file)
@@ -58,6 +58,10 @@ def modify_audio_tags(audio_file, artist=None, album=None):
 
 def process_audio_files(directory, artist=None, album=None):
     """遍历文件夹并修改 MP3 和 M4A 文件的元数据"""
+    if not os.path.exists(directory):
+        logger.error("目录不存在: %s", directory)
+        return
+
     try:
         for root, _, files in os.walk(directory):
             for file in files:
@@ -73,14 +77,13 @@ if __name__ == "__main__":
     config = read_yaml("./mp3_metadata.yaml")
 
     if config:
-        for i in range(2, 8):
-            audio_directory = f"/Users/liuxin/CloudStation/有声书/哈利·波特/哈利波特（7部全集）/第{i}部"
-            artist = config.get("artist")
-            album = config.get(f"album{i}")
+        audio_directory = f"C:/Users/bcjt_/OneDrive/Desktop/《纳尼亚传奇》"
+        artist = config.get("artist")
+        album = config.get(f"album")
 
-            if audio_directory:
-                process_audio_files(audio_directory, artist, album)
-            else:
-                logger.error("配置文件中未找到 audio_directory")
+        if audio_directory:
+            process_audio_files(audio_directory, artist, album)
+        else:
+            logger.error("配置文件中未找到 audio_directory")
     else:
         logger.error("未能读取配置文件")

@@ -34,6 +34,10 @@ def load_config(yaml_path):
 
 def find_mp4_files(directory, depth):
     """遍历目标目录下的 MP4 文件，支持遍历深度"""
+    if not os.path.exists(directory):
+        logger.error("目录不存在: %s", directory)
+        return []
+
     mp4_files = []
     for root, _, files in os.walk(directory):
         # 计算当前目录的深度
@@ -109,6 +113,27 @@ def convert_wma_to_m4a(directory):
             logger.error("转换失败: %s -> %s, 错误: %s", wma_path, m4a_path, e)
 
 
+def convert_m4a_to_mp3(directory, bitrate="320k"):
+    """将指定目录下的 M4A 文件转换为 MP3，尽量减少音质损失"""
+    m4a_files = [f for f in os.listdir(directory) if f.lower().endswith(".m4a")]
+    if not m4a_files:
+        logger.info("未找到 M4A 文件")
+        return
+
+    for m4a_file in m4a_files:
+        m4a_path = os.path.join(directory, m4a_file)
+        mp3_path = os.path.splitext(m4a_path)[0] + ".mp3"
+        try:
+            # 使用 ffmpeg 进行转换，设定高比特率以减少音质损失
+            ffmpeg.input(m4a_path).output(
+                mp3_path, acodec="libmp3lame", ab=bitrate
+            ).run()
+            os.remove(m4a_path)
+            logger.info("转换成功: %s -> %s", m4a_path, mp3_path)
+        except Exception as e:
+            logger.error("转换失败: %s -> %s, 错误: %s", m4a_path, mp3_path, e)
+
+
 if __name__ == "__main__":
 
     yaml_path = "./audio_convert.yaml"  # 配置文件路径
@@ -127,4 +152,4 @@ if __name__ == "__main__":
     subdirs = find_subdirectories(target_directory, depth)
     logger.info("找到的子目录: %s", subdirs)
     for dirs in subdirs:
-        convert_wma_to_m4a(dirs)
+        convert_m4a_to_mp3(dirs, bitrate="192k")
