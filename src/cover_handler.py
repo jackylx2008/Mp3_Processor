@@ -1,14 +1,17 @@
 # ./src/cover_handler.py
+from logging_config import setup_logger  # 引入日志配置函数
 import io
 import logging
 import os
 import sys
+import yaml
 
 import cv2
-import eyed3
 import numpy as np
-from mutagen.asf import ASF, ASFByteArrayAttribute
-from mutagen.id3 import APIC, ID3
+from mutagen.asf import ASF
+from mutagen.asf._attrs import ASFByteArrayAttribute
+from mutagen.id3 import ID3
+from mutagen.id3._frames import APIC
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Cover
 from PIL import Image, ImageDraw, ImageFont
@@ -17,10 +20,19 @@ from PIL import Image, ImageDraw, ImageFont
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # 解决中文文件名问题
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-from src.logging_config import setup_logger  # 引入日志配置函数
 
 # 初始化日志记录器，日志文件为 cover_handler.log
 logger = setup_logger(log_level=logging.INFO, log_file="./logs/cover_handler.log")
+
+
+def read_yaml(file_path):
+    """读取 YAML 配置文件"""
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            return yaml.safe_load(file)
+    except Exception as e:
+        logger.error("读取 YAML 文件失败: %s", e)
+        return None
 
 
 def images_cropper(
@@ -222,17 +234,14 @@ def remove_existing_cover(audio_file_path):
     """
     try:
         if audio_file_path.lower().endswith(".mp3"):
-            audiofile = eyed3.load(audio_file_path)
-            if audiofile.tag is None:
-                audiofile.initTag()
-                logger.warning("'%s' 没有 ID3 标签，已初始化。", audio_file_path)
-            if audiofile.tag.images:
+            audio = MP3(audio_file_path, ID3=ID3)
+            if audio.tags and audio.tags.getall("APIC"):
                 logger.info("'%s' 已有封面，正在删除旧封面。", audio_file_path)
-                audiofile.tag.images.remove("")
-                audiofile.tag.save()
+                audio.tags.delall("APIC")
+                audio.save()
         elif audio_file_path.lower().endswith(".m4a"):
             audio = MP4(audio_file_path)
-            if "covr" in audio.tags:
+            if audio.tags is not None and "covr" in audio.tags:
                 logger.info("'%s' 已有封面，正在删除旧封面。", audio_file_path)
                 audio.tags["covr"] = []
                 audio.save()
@@ -258,15 +267,16 @@ def add_cover_to_audio(audio_file_path, cover_image_path):
             audio = MP3(audio_file_path, ID3=ID3)
             if audio.tags is None:
                 audio.add_tags()
-            audio.tags.add(
-                APIC(
-                    encoding=3,
-                    mime="image/jpeg",
-                    type=3,
-                    desc="Cover",
-                    data=image_data,
+            if audio.tags is not None:
+                audio.tags.add(
+                    APIC(
+                        encoding=3,
+                        mime="image/jpeg",
+                        type=3,
+                        desc="Cover",
+                        data=image_data,
+                    )
                 )
-            )
             audio.save()
         elif audio_file_path.lower().endswith(".m4a"):
             audio = MP4(audio_file_path)
@@ -355,6 +365,23 @@ def batch_crop_images():
     images_cropper(input_folder, output_folder, crop_area)
 
 
+def process_audio_folder_recursive(
+    root_folder, base_cover_image, split_char, fontpath="./Yahei.ttf"
+):
+    """
+    递归遍历所有子目录，对每个目录下的音频文件批量加封面。
+    返回值: True 表示正常处理，False 表示目录不存在或处理异常。
+    """
+    if not os.path.isdir(root_folder):
+        logger.error("目录不存在: %s", root_folder)
+        return False
+
+    for dirpath, _, _ in os.walk(root_folder):
+        logger.info("处理目录: %s", dirpath)
+        process_audio_folder(dirpath, base_cover_image, split_char, fontpath)
+    return True
+
+
 if __name__ == "__main__":
     # batch_crop_images()
     # for i in range(1, 8):
@@ -369,8 +396,24 @@ if __name__ == "__main__":
     #         logger.info("开始为 '%s' 中的音频文件添加封面。", audio_folder)
     #         process_audio_folder(audio_folder, cover_image_path, split_char="》")
     #         logger.info("所有音频文件封面处理完成。")
-    process_audio_folder(
-        "C:/Users/bcjt_/OneDrive/Desktop/《纳尼亚传奇》",
-        f"./assets/cover_images/IMG_0432.png",
-        split_char="",
-    )
+
+    path = read_yaml("./path.yaml")
+    if path:
+        logger.info(
+            "开始为 "
+            + path.get("mp3_files_path")
+            + " 及其子目录中的音频文件添加封面。",
+        )
+        result = process_audio_folder_recursive(
+            path.get("mp3_files_path"),
+            path.get("cover_image_path"),
+            split_char="",
+        )
+        if result:
+            logger.info(
+                path.get("mp3_files_path") + " 及其子目录中的音频文件封面添加完成。",
+            )
+        else:
+            logger.error(
+                "处理失败，目录不存在或发生异常: %s", path.get("mp3_files_path")
+            )

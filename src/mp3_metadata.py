@@ -1,3 +1,4 @@
+from logging_config import setup_logger  # 引入日志配置函数
 import logging
 import os
 import re
@@ -10,7 +11,6 @@ from mutagen.mp4 import MP4
 # 动态添加项目根目录到 sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.logging_config import setup_logger  # 引入日志配置函数
 
 # 初始化日志记录器
 logger = setup_logger(log_level=logging.INFO, log_file="./logs/audio_metadata.log")
@@ -57,33 +57,50 @@ def modify_audio_tags(audio_file, artist=None, album=None):
 
 
 def process_audio_files(directory, artist=None, album=None):
-    """遍历文件夹并修改 MP3 和 M4A 文件的元数据"""
+    """递归遍历文件夹及所有子目录，为每个音频文件增加元数据"""
     if not os.path.exists(directory):
         logger.error("目录不存在: %s", directory)
         return
 
     try:
         for root, _, files in os.walk(directory):
+            subdir_name = os.path.basename(root)
+            album_with_subdir = f"{album} {subdir_name}" if album else subdir_name
+            logger.info("进入目录: %s，album标签: %s", root, album_with_subdir)
             for file in files:
                 if file.endswith((".mp3", ".m4a")):
                     audio_file = os.path.join(root, file)
                     logger.info("正在处理文件: %s", audio_file)
-                    modify_audio_tags(audio_file, artist, album)
+                    modify_audio_tags(audio_file, artist, album_with_subdir)
     except Exception as e:
         logger.error("遍历文件夹失败: %s", e)
 
 
-if __name__ == "__main__":
-    config = read_yaml("./mp3_metadata.yaml")
+# if __name__ == "__main__":
+#     config = read_yaml("./mp3_metadata.yaml")
 
-    if config:
-        audio_directory = f"C:/Users/bcjt_/OneDrive/Desktop/《纳尼亚传奇》"
-        artist = config.get("artist")
-        album = config.get(f"album")
+#     if config:
+#         audio_directory = "C:/Users/bcjt_/OneDrive/Desktop/output1/猴子警长探案记第1-4季 番外篇侦探冒险"
+#         artist = config.get("artist")
+#         album = config.get("album")
+
+#         if audio_directory:
+#             process_audio_files(audio_directory, artist, album)
+#         else:
+#             logger.error("配置文件中未找到 audio_directory")
+#     else:
+#         logger.error("未能读取配置文件")
+if __name__ == "__main__":
+    path = read_yaml("./path.yaml")
+
+    if path:
+        audio_directory = path.get("mp3_files_path")
+        artist = path.get("artist")
+        album = path.get("album")
 
         if audio_directory:
             process_audio_files(audio_directory, artist, album)
         else:
-            logger.error("配置文件中未找到 audio_directory")
+            logger.error("path.yaml 中未找到 mp3_files_path")
     else:
-        logger.error("未能读取配置文件")
+        logger.error("未能读取 path.yaml")
