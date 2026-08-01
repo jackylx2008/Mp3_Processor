@@ -1,4 +1,4 @@
-from logging_config import setup_logger  # 引入日志配置函数
+from src.logging_config import setup_logger  # 引入日志配置函数
 import logging
 import os
 import re

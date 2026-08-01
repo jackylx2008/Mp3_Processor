@@ -1,5 +1,5 @@
 # ./src/cover_handler.py
-from logging_config import setup_logger  # 引入日志配置函数
+from src.logging_config import setup_logger  # 引入日志配置函数
 import io
 import logging
 import os
