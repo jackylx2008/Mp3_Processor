@@ -5,10 +5,19 @@
 *.mp4
 *.m4a
 .env
-*.yaml
 *.json
 *.ini
 *.ttf
+
+# Project-local inputs, outputs, logs and environment
+input/
+output/
+log/
+logs/
+mp3_files/
+common.env
+COMMON_PROJECT_SKILLS.md
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

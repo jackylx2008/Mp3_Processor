@@ -1,5 +1,4 @@
-pydub
-eyed3
-pillow 
-mutagen 
-opencv-python
+PyYAML>=6.0
+mutagen>=1.47
+Pillow>=10.0
+pydub>=0.25
