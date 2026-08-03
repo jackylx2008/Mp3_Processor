@@ -308,14 +308,14 @@ Invoke-RestMethod `
 项目日志：
 
 ```text
-log/<entry_name>.log
+logs/<entry_name>.log
 ```
 
 `llama-server` 输出：
 
 ```text
-log/llama_server.out.log
-log/llama_server.err.log
+logs/llama_server.out.log
+logs/llama_server.err.log
 ```
 
 常见问题：

@@ -4,7 +4,7 @@ Mp3 Processor 是一个面向批量音频业务的 Python 工具集，支持格�
 
 ## 安全约定
 
-- `mp3_files/`、`input/`、`output/`、`log/`、`common.env` 均不提交 Git。
+- `mp3_files/`、`input/`、`output/`、`logs/`、`common.env` 均不提交 Git。
 - 格式转换和切分只写入 `output/`，不会删除源文件。
 - 元数据与封面流程默认仅预览；必须传入 `--write` 才会修改业务音频。
 - 首次正式处理前仍建议备份原始音频。
@@ -118,11 +118,16 @@ Mp3_Processor/
 ├── apply_cover.py                 # 音频封面写入入口
 ├── split_audio.py                 # 音频切分入口
 ├── src/mp3_processor/
+│   ├── bootstrap.py               # 入口共用的配置与日志初始化
+│   ├── cli.py                     # 统一结果输出与退出状态
 │   ├── config_loader.py           # YAML、dotenv、环境变量解析
 │   ├── context.py                 # 统一应用上下文
+│   ├── results.py                 # 工作流结构化结果
 │   ├── modules/                   # 单一职责基础能力
 │   └── flows/                     # 业务步骤编排
-└── tests/                         # 自动化测试
+├── docs/                          # README 之外的项目文档
+├── tests/                         # 自动化测试
+└── logs/                          # 运行日志（不提交 Git）
 ```
 
 模块层不读取业务配置，也不决定完整执行路径；flows 通过 `AppContext` 获取配置并组合模块；根目录入口只负责参数、启动、调用和结果输出。

@@ -96,7 +96,7 @@ git status --short --ignored
 
 - 本地 `.env` 文件。
 - `raw_data/`、`data/`、`output/` 等真实数据目录。
-- `log/`、`logs/`。
+- `logs/`。
 - 浏览器登录状态、cookies、profile。
 - 密码、token、授权码、私钥。
 - 真实邮件、附件、流水、订单截图、账单 PDF。

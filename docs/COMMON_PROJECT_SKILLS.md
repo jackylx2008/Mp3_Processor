@@ -2,19 +2,20 @@
 
 ## 通用前缀标记
 
-为保证这份 `SKILLS.md` 可复用，统一使用通用前缀标记 `PROJECT_PREFIX`。
+为保证这份 `COMMON_PROJECT_SKILLS.md` 可复用，统一使用通用前缀标记 `PROJECT_PREFIX`。
 
 使用方式约定：
 
 - Python 包路径使用 `<project_prefix>` 形式，例如 `src/<project_prefix>/flows/`
-- Python 入口脚本放在项目根目录下，不使用 `<project_prefix>` 包路径，例如 `report.py`
-- 导入路径使用 `<project_prefix>` 形式，例如 `from <project_prefix>.logging_config import ...`
+- Python 入口脚本放在项目根目录下，不使用 `<project_prefix>` 包路径，例如 `example.py`
+- 包内导入路径使用 `<project_prefix>` 形式，例如 `from <project_prefix>.flows.example_flow import run`
+- 项目根目录基础设施直接按根模块导入，例如 `from logging_config import get_logger`
 
 这份文档中出现的前缀示例，都应理解为“项目名替换位”，而不是某个固定项目名。
 
 补充约定：
 
-- 文档中的项目名、目录名、模块名、配置名、命令名、路径名、示例文件名等，均应使用示意名称或通用占位名称。
+- 文档中的项目名、目录名、模块名、配置名、命令名、路径名和示例文件名应使用示意名称或通用占位名称。
 - 配置示例不得使用真实项目名称、真实仓库名称、真实业务名称、真实机器路径或真实环境信息。
 - 如需展示示例，应优先使用 `demo`、`sample`、`example`、`test`、`PROJECT_PREFIX` 等通用写法。
 
@@ -28,28 +29,33 @@
 
 后续新增功能时，应优先沿着这条结构扩展，而不是把业务逻辑直接堆进某个入口文件里。
 
-## 当前项目结构
+## 项目结构
 
-当前项目采用 `src` 布局承载包代码，入口脚本放在项目根目录。核心结构如下：
+项目采用 `src` 布局承载包代码，入口脚本放在项目根目录。推荐结构如下：
 
+- `logging_config.py`
+- `config.yaml`
+- `common.env.example`
+- `example.py`
 - `src/<project_prefix>/modules/`
 - `src/<project_prefix>/flows/`
-- `scan.py`
-- `report.py`
-- `export.py`
+- `docs/`
+- `tests/`
+- `logs/`
 
-当前已存在或建议保留的基础模块类型包括：
+建议保留的基础模块类型包括：
 
 - `logging_config.py`
   - 必须存在于项目根目录
   - 提供统一日志初始化和 logger 获取能力
 - `config_loader.py`
+  - 位于 `src/<project_prefix>/`
   - 负责读取 `config.yaml`
   - 支持 `${ENV_VAR:-default}` 形式的环境变量覆盖
   - 支持从 `common.env` 注入本地环境变量
 - `context.py`
   - 提供统一上下文对象
-  - 作为入口层、编排层与基础模块之间共享配置和运行信息的统一入口
+  - 作为入口层与编排层共享配置、路径和运行信息的统一入口
 
 目录职责约定：
 
@@ -57,18 +63,20 @@
   - 放通用处理能力、公共工具、通用适配逻辑
 - `flows/`
   - 放面向某类业务目标的编排逻辑
+- `docs/`
+  - 独立存放项目文档
+  - 项目根目录只保留初始入口文档 `README.md`；除 `README.md` 外的架构、配置、部署、开发和使用说明等文档统一放入 `docs/`
+- `tests/`
+  - 统一存放测试代码，包括单元测试、集成测试及测试辅助代码
+  - 不要将测试代码混放在 `src/`、入口脚本目录或业务模块中
+- `logs/`
+  - 统一存放运行日志
+  - 日志目录固定使用复数形式 `logs/`，不得使用 `log/`
 - 项目根目录下的独立 `.py` 文件
   - 放不同需求对应的独立启动脚本
   - 一个入口脚本对应一个明确工作流
   - 不再采用 CLI 子命令统一分发的方式
 
-推荐示例结构：
-
-- `src/<project_prefix>/modules/`
-- `src/<project_prefix>/flows/`
-- `scan.py`
-- `report.py`
-- `export.py`
 
 ## 模块约定
 
@@ -83,6 +91,7 @@
 - 不要在模块里直接决定完整执行路径。
 - 路径处理优先使用 `pathlib.Path`。
 - 模块输出应尽量结构化，避免把不稳定格式直接暴露给上层。
+- 模块接收已经解析的路径和明确参数，不直接读取 `config.yaml` 或 `common.env`。
 
 ## 编排层约定
 
@@ -92,9 +101,10 @@
 
 - 编排层用于表达“为实现某一类目标，需要按什么顺序组合哪些能力”。
 - 编排层应优先复用 `modules` 中已有能力，而不是重复实现底层细节。
-- 编排层不强制要求必须命名为 workflow，也不强制统一固定函数名，可根据项目实际情况采用合适的组织方式。
-- 但同一项目内应保持风格一致，例如统一使用 `run(...)`、`execute(...)` 或类方法入口。
-- 编排层应通过统一上下文对象获取全局配置、当前场景配置、路径和 logger。
+- 编排层命名和公开入口应在同一项目内保持一致。
+- 编排层通过统一上下文获取全局配置、场景配置和项目路径。
+- 编排层使用统一日志模块获取 logger，不自行添加 handler。
+- 编排结果应使用项目内统一的结构化形式，便于入口层汇总和确定退出状态。
 - 如果一个新场景只是旧场景的扩展，优先复用已有编排逻辑或其依赖的基础模块。
 - 编排层应重点表达步骤组织、阶段边界、异常传递和结果汇总，而不是沉入底层实现。
 
@@ -115,21 +125,19 @@
 
 推荐示例：
 
-- `scan.py`
-  - 用于执行扫描类需求
-- `report.py`
-  - 用于执行报告生成类需求
-- `export.py`
-  - 用于执行导出类需求
+- `scan.py`：承接扫描类工作流
+- `report.py`：承接报告类工作流
+- `export.py`：承接导出类工作流
 
 约定：
 
 - 入口脚本只负责：
+  - 解析入口参数
   - 加载配置
   - 初始化日志
   - 创建上下文
   - 调用对应编排逻辑
-  - 处理退出状态或结果输出
+  - 输出结果并处理退出状态
 - 不要把核心业务逻辑直接写进入口脚本。
 - 新增需求时，优先在项目根目录新增独立入口文件，而不是继续堆叠分支判断。
 - 若多个入口共享相同启动动作，可抽出公共入口辅助模块，但不要重新退回到“大一统 CLI 分发”。
@@ -142,7 +150,7 @@
 
 - docstring 必须位于 `from __future__ import annotations` 之前。
 - 使用中文说明。
-- 风格参照本项目 `quarter_compare.py` 的文件头 docstring。
+- 同一项目的入口文件应使用一致的 docstring 风格。
 - 不要只写一句简单描述；应写成入口工具说明。
 - 如果入口文件无参数，也应说明固定读取哪些配置文件。
 - 如果入口文件带 CLI 参数，应说明必填参数、可选参数和示例命令。
@@ -174,10 +182,13 @@
 """
 ```
 
-如果入口文件需要在无参数时打印使用说明，应优先复用文件头 docstring，例如：
+入口参数帮助应优先复用文件头 docstring，例如：
 
 ```python
-USAGE = __doc__ or ""
+parser = argparse.ArgumentParser(
+    description=__doc__,
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+)
 ```
 
 ## 配置约定
@@ -186,18 +197,14 @@ USAGE = __doc__ or ""
 
 应用配置入口统一为项目根目录下的 `config.yaml`。
 
-当前结构可参考：
+通用结构可参考：
 
 - `app`
   - `log_level`
   - `input_path`
   - `output_dir`
-  - `default_entry`
-- `flows.scan`
-  - `input_file_type`
-- `flows.report`
-  - `input_file_type`
-  - `report_name`
+- `flows.example`
+  - 当前场景需要的输入、输出和处理选项
 
 约定：
 
@@ -206,6 +213,8 @@ USAGE = __doc__ or ""
 - 默认值写在 YAML 中。
 - 本地差异优先通过环境变量覆盖，而不是写死在源码里。
 - 配置结构应服务于“可复用、可扩展、可替换”，不要围绕某一个入口文件临时拼接字段。
+- 配置加载、环境变量展开和相对路径解析应集中处理，避免分散在入口、编排或基础模块中。
+- 编排层只读取与自身场景对应的配置；基础模块不读取业务配置。
 
 补充约定：
 
@@ -221,17 +230,20 @@ USAGE = __doc__ or ""
 当前示例变量可包括：
 
 - `LOG_LEVEL`
-- `INPUT_FILE`
-- `OUTPUT_PATH`
-- `DEFAULT_ENTRY`
-- `INPUT_FILE_TYPE`
-- `REPORT_NAME`
+- `INPUT_PATH`
+- `OUTPUT_DIR`
+- `CLOUDSTATION_ROOT`
+- `CLOUDSTATION_ROOT_WINDOWS`
+- `CLOUDSTATION_ROOT_MACOS`
+- `CLOUDSTATION_ROOT_LINUX`
+- 工作流覆盖变量，例如 `EXAMPLE_INPUT_PATH`、`EXAMPLE_OUTPUT_DIR`
 
 约定：
 
 - 机器相关、路径相关、本地调试相关配置放在 `common.env`。
 - 绝对路径只应出现在本地环境文件里，不应扩散到源码里。
 - `common.env.example` 中的值仅作格式示意，不应包含真实路径、真实账号、真实服务地址或真实项目标识。
+- `common.env` 不覆盖进程中已经存在的环境变量，便于命令行或运行环境显式指定更高优先级值。
 
 ### CloudStation 根目录
 
@@ -239,7 +251,10 @@ USAGE = __doc__ or ""
 
 约定：
 
-- 源码和 `config.yaml` 中不要写死 `D:\CloudStation`、`~/CloudStation` 或其他本机绝对路径。
+- 每个项目都必须配置 CloudStation 根目录，用于在不同操作系统上访问或处理同步范围内的数据。
+- Windows 系统的 CloudStation 根目录固定为 `D:\CloudStaion`。
+- macOS 系统的 CloudStation 根目录固定为 `~/SynologyDrive/`。
+- 源码和 `config.yaml` 中不要直接写死上述路径或其他本机绝对路径，应统一通过 CloudStation 根目录配置引用。
 - 路径字段中使用 `${CLOUDSTATION_ROOT}` 作为标记符，例如 `${CLOUDSTATION_ROOT}/Python/Project/<project_name>/data/input.xlsx`。
 - 本地环境文件中可以同时保留不同平台的根目录变量，由运行时代码根据当前系统选择。
 - 若显式提供 `CLOUDSTATION_ROOT`，它优先于平台变量。
@@ -251,8 +266,8 @@ USAGE = __doc__ or ""
 `common.env` 或 `.env` 示例：
 
 ```dotenv
-CLOUDSTATION_ROOT_WINDOWS=D:\CloudStation
-CLOUDSTATION_ROOT_MACOS=~/CloudStation
+CLOUDSTATION_ROOT_WINDOWS=D:\CloudStaion
+CLOUDSTATION_ROOT_MACOS=~/SynologyDrive/
 CLOUDSTATION_ROOT_LINUX=~/CloudStation
 ```
 
@@ -283,18 +298,19 @@ local_excel:
 - `setup_logger(...)`
 - `get_logger(name)`
 
-当前行为可包括：
+统一行为要求：
 
 - 同时输出到控制台和滚动文件
-- 日志目录默认为 `log/`
+- 日志文件统一保存到项目根目录下的 `logs/`
+- 不得创建或使用 `log/` 作为日志目录
 - 日志文件名基于当前入口脚本名
 - 单文件 10 MB
 - 保留 5 份备份
 
 约定：
 
-- 在入口脚本早期初始化日志。
-- 编排层和模块层统一用 `get_logger(__name__)` 获取 logger。
+- 在入口脚本调用编排逻辑前完成日志初始化。
+- 编排层和需要记录日志的基础模块统一通过 `get_logger(__name__)` 获取 logger。
 - 除非有明确理由，不要在其他模块里重复配置 handler 或 root logger。
 - 日志策略应保持项目内一致，不因单个入口脚本而单独割裂。
 
@@ -307,6 +323,17 @@ setup_logger(log_level="INFO")
 logger = get_logger(__name__)
 ```
 
+## 测试约定
+
+测试代码统一位于项目根目录的 `tests/`。
+
+约定：
+
+- 新增或修改基础模块时，应在 `tests/` 增加对应单元测试。
+- 编排或入口行为变复杂时，应补充工作流级或入口级测试。
+- 测试命令和静态检查命令应在 `README.md` 中明确。
+- 测试不得依赖或修改真实业务数据目录，应使用临时目录和最小化样本。
+
 ## Git 推送约定
 
 项目需要同步到远端仓库时，优先按下面顺序处理。
@@ -317,11 +344,11 @@ logger = get_logger(__name__)
 - 如果入口脚本、配置方式、运行命令、输出目录或测试方式变化，必须同步更新 `README.md`。
 - `README.md` 应进入版本库，用于说明项目用途、运行方式、配置方式和 Git 同步注意事项。
 
-`COMMON_PROJECT_SKILLS.md` 是本地项目技能文件，不同步到 Git：
+`docs/COMMON_PROJECT_SKILLS.md` 是项目文档的一部分，应由 Git 跟踪：
 
-- `.gitignore` 中必须包含 `COMMON_PROJECT_SKILLS.md`。
-- 如果该文件已经被 Git 跟踪，应执行 `git rm --cached COMMON_PROJECT_SKILLS.md`，只从索引移除，保留本地文件。
-- 后续规则更新仍写入本地 `COMMON_PROJECT_SKILLS.md`，但不要提交该文件。
+- 不要在 `.gitignore` 中排除该文件。
+- 项目结构、配置、入口、日志或测试约定发生变化时，应同步更新并提交该文件。
+- 文档中不得写入真实业务数据、凭据或仅适用于某台机器的私有信息。
 
 ### 基础检查
 
@@ -346,7 +373,6 @@ git remote add origin <remote_url>
 - `logs/`
 - `*.env`
 - `common.env`
-- `COMMON_PROJECT_SKILLS.md`
 
 ### 提交和常规推送
 
@@ -354,7 +380,6 @@ git remote add origin <remote_url>
 
 ```powershell
 git add -A
-git reset COMMON_PROJECT_SKILLS.md
 git status --short
 git commit -m "Initial project commit"
 ```
@@ -420,7 +445,7 @@ git push ssh://git@ssh.github.com/<owner>/<repo>.git main:refs/heads/main
 3. 先复用现有 logger 和 context，不要新开一套接线方式。
 4. 让编排层负责组织步骤，让基础模块负责提供能力。
 5. 不同需求优先使用项目根目录下的独立入口脚本承接。
-6. 运行产物写入 `output/`，日志写入 `log/`。
+6. 运行产物写入 `output/`，日志写入 `logs/`。
 
 ## 适用场景
 

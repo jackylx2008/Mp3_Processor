@@ -19,7 +19,7 @@ def setup_logger(
     """配置根 logger，同时输出到控制台和滚动日志文件。"""
     level = _coerce_log_level(log_level)
     entry_name = Path(sys.argv[0]).stem or "app"
-    target = Path(log_file) if log_file else PROJECT_ROOT / "log" / f"{entry_name}.log"
+    target = Path(log_file) if log_file else PROJECT_ROOT / "logs" / f"{entry_name}.log"
     if not target.is_absolute():
         target = PROJECT_ROOT / target
     target.parent.mkdir(parents=True, exist_ok=True)
