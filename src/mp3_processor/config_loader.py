@@ -63,13 +63,13 @@ def _expand_value(value: Any) -> Any:
 def _set_cloudstation_root() -> None:
     if os.getenv("CLOUDSTATION_ROOT"):
         return
-    names = {
-        "windows": ("CLOUDSTATION_ROOT_WINDOWS",),
-        "darwin": ("CLOUDSTATION_ROOT_MACOS", "CLOUDSTATION_ROOT_DARWIN"),
-        "linux": ("CLOUDSTATION_ROOT_LINUX",),
-    }.get(platform.system().lower(), ())
+    names, default = {
+        "windows": (("CLOUDSTATION_ROOT_WINDOWS",), r"D:\CloudStaion"),
+        "darwin": (("CLOUDSTATION_ROOT_MACOS", "CLOUDSTATION_ROOT_DARWIN"), "~/SynologyDrive"),
+        "linux": (("CLOUDSTATION_ROOT_LINUX",), "~/CloudStation"),
+    }.get(platform.system().lower(), ((), "~/CloudStation"))
     for name in names:
         if value := os.getenv(name):
             os.environ["CLOUDSTATION_ROOT"] = value
             return
-    os.environ["CLOUDSTATION_ROOT"] = str(Path("~/CloudStation").expanduser())
+    os.environ["CLOUDSTATION_ROOT"] = default

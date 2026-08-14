@@ -39,6 +39,7 @@ def run(
         files = files[:limit]
 
     result = FlowResult(discovered=len(files))
+    ffmpeg_executable = str(config.get("ffmpeg", "ffmpeg"))
     for source in files:
         destination = output_path_for(source, source_root, target_root, ".mp3")
         if destination.exists() and not bool(config.get("overwrite", False)):
@@ -51,9 +52,9 @@ def run(
                 destination,
                 bitrate=str(config.get("bitrate", "192k")),
                 overwrite=bool(config.get("overwrite", False)),
-                ffmpeg_executable=str(config.get("ffmpeg", "ffmpeg")),
+                ffmpeg_executable=ffmpeg_executable,
             )
-            if bool(config.get("validate_output", True)) and not validate_audio(destination):
+            if bool(config.get("validate_output", True)) and not validate_audio(destination, ffmpeg_executable):
                 raise RuntimeError(f"输出验证失败: {destination}")
             logger.info("转换完成: %s -> %s", source, destination)
             result.succeeded += 1

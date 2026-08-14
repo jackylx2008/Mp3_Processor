@@ -40,6 +40,7 @@ def run(
                 duration_minutes=float(config.get("duration_minutes", 30)),
                 bitrate=str(config.get("bitrate", "192k")),
                 overwrite=bool(config.get("overwrite", False)),
+                ffmpeg_executable=str(config.get("ffmpeg", "ffmpeg")),
             )
             logger.info("切分完成: %s，共 %d 段", source, len(outputs))
             result.succeeded += 1

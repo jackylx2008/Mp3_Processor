@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from pathlib import Path
+
+from mp3_processor.platform_tools import resolve_executable
 
 
 class AudioConversionError(RuntimeError):
@@ -13,10 +14,7 @@ class AudioConversionError(RuntimeError):
 
 def require_ffmpeg(executable: str = "ffmpeg") -> str:
     """返回 FFmpeg 路径，不可用时抛出清晰异常。"""
-    resolved = shutil.which(executable)
-    if not resolved:
-        raise FileNotFoundError(f"找不到 FFmpeg: {executable}")
-    return resolved
+    return resolve_executable(executable, name="FFmpeg")
 
 
 def convert_to_mp3(

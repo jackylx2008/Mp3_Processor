@@ -12,7 +12,7 @@ flows 场景编排层
 modules 基础能力层
 ```
 
-`config_loader.py`、`context.py` 和 `logging_config.py` 为三层提供公共基础设施。基础模块不能反向导入 flow 或入口脚本。
+`config_loader.py`、`context.py`、`platform_tools.py` 和 `logging_config.py` 为三层提供公共基础设施。基础模块不能反向导入 flow 或入口脚本。
 
 ## 各层职责
 
@@ -50,9 +50,10 @@ modules 提供小而稳定的能力：
 
 1. `bootstrap_context()` 定位项目根目录和 `config.yaml`。
 2. `config_loader` 先读取 `common.env`，但不覆盖进程中已有的环境变量。
-3. YAML 中的 `${ENV_VAR:-default}` 被递归展开。
-4. `AppContext.resolve_path()` 将相对路径统一解释为相对项目根目录。
-5. flow 只读取自己的 `flows.<name>` 节点。
+3. `config_loader` 按 Windows、macOS 或 Linux 选择对应的 `CLOUDSTATION_ROOT_*`，显式的 `CLOUDSTATION_ROOT` 优先。
+4. YAML 中的 `${ENV_VAR:-default}` 被递归展开。
+5. `AppContext.resolve_path()` 将相对路径统一解释为相对项目根目录。
+6. flow 只读取自己的 `flows.<name>` 节点。
 
 真实机器路径只放在 `common.env`。仓库中的 `config.yaml` 和 `common.env.example` 使用相对路径或通用示例。
 

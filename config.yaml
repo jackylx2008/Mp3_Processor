@@ -2,6 +2,7 @@ app:
   log_level: "${LOG_LEVEL:-INFO}"
   input_path: "${INPUT_PATH:-mp3_files/input}"
   output_dir: "${OUTPUT_DIR:-output}"
+  cloudstation_root: "${CLOUDSTATION_ROOT}"
 
 flows:
   convert_audio:
@@ -46,5 +47,6 @@ flows:
     recursive: true
     duration_minutes: 30
     bitrate: "${SPLIT_BITRATE:-192k}"
+    ffmpeg: "${FFMPEG_PATH:-ffmpeg}"
     overwrite: false
     max_files: 0

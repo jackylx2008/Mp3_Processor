@@ -2,6 +2,9 @@
 # 设置最大行长度
 max-line-length = 120
 
+# 不扫描 Git、缓存、构建产物和项目本地 Conda/venv 环境
+exclude = .git,__pycache__,.pytest_cache,.venv,.conda,venv,env,ENV,build,dist,*.egg-info
+
 # 忽略以下检查:
 # E501 - 行长度检查
 # B001 - 不要使用裸露的 except:

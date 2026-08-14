@@ -11,19 +11,33 @@ Mp3 Processor 是一个面向批量音频业务的 Python 工具集，支持格�
 
 ## 环境准备
 
-要求 Python 3.10+，转换与切分还要求系统可执行 `ffmpeg`。
+要求安装 Anaconda 或 Miniconda。项目使用根目录前缀环境 `.venv`，`environment.yml` 会安装 Python 3.12、开发依赖和 FFmpeg。
+
+`.venv` 只供当前操作系统使用，不提交 Git，也不能在 Windows 和 macOS 之间复用。如果项目由 Synology Drive 同步，应在同步工具中排除 `.venv/`，并在每台机器上从 `environment.yml` 重建。
+
+Windows PowerShell：
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-ffmpeg -version
+conda env create --prefix .\.venv -f environment.yml
+conda activate .\.venv
+.\.venv\python.exe -m pytest -q
 ```
 
-开发与测试工具可使用：
+macOS/Linux：
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```bash
+conda env create --prefix ./.venv -f environment.yml
+conda activate ./.venv
+./.venv/bin/python -m pytest -q
 ```
+
+依赖声明变化后执行：
+
+```bash
+conda env update --prefix ./.venv -f environment.yml --prune
+```
+
+激活环境后可直接运行入口。`FFMPEG_PATH` 默认为 `ffmpeg`（Conda 环境已提供），也可在 `common.env` 中设为本机 FFmpeg 的绝对路径。
 
 ## 配置
 
@@ -33,12 +47,20 @@ ffmpeg -version
 Copy-Item common.env.example common.env
 ```
 
+macOS/Linux：
+
+```bash
+cp common.env.example common.env
+```
+
 路径优先使用相对项目根目录的写法。跨平台绝对路径可通过以下环境变量管理：
 
 - `CLOUDSTATION_ROOT_WINDOWS`
 - `CLOUDSTATION_ROOT_MACOS`
 - `CLOUDSTATION_ROOT_LINUX`
 - `CLOUDSTATION_ROOT`（显式设置时优先）
+
+默认映射为 Windows `D:\CloudStaion`、macOS `~/SynologyDrive`、Linux `~/CloudStation`。配置加载器会按当前系统自动选择，业务模块不需要判断操作系统。
 
 默认业务输入目录为 `mp3_files/input/`，也可以通过 `config.yaml`、`common.env` 或入口参数 `--input` 覆盖。
 
@@ -111,6 +133,7 @@ python split_audio.py --max-files 1
 Mp3_Processor/
 ├── logging_config.py              # 全项目唯一日志初始化
 ├── config.yaml                    # 统一配置入口
+├── environment.yml               # 跨平台 Conda 环境声明
 ├── common.env.example             # 本机环境示例
 ├── convert_audio.py               # 转换工作流入口
 ├── update_metadata.py             # 元数据工作流入口
@@ -122,6 +145,7 @@ Mp3_Processor/
 │   ├── cli.py                     # 统一结果输出与退出状态
 │   ├── config_loader.py           # YAML、dotenv、环境变量解析
 │   ├── context.py                 # 统一应用上下文
+│   ├── platform_tools.py          # 跨平台外部工具定位
 │   ├── results.py                 # 工作流结构化结果
 │   ├── modules/                   # 单一职责基础能力
 │   └── flows/                     # 业务步骤编排
@@ -132,7 +156,7 @@ Mp3_Processor/
 
 模块层不读取业务配置，也不决定完整执行路径；flows 通过 `AppContext` 获取配置并组合模块；根目录入口只负责参数、启动、调用和结果输出。
 
-更详细的依赖方向、配置生命周期和扩展步骤见 [架构说明](docs/ARCHITECTURE.md)。
+更详细的依赖方向、配置生命周期和扩展步骤见 [架构说明](docs/ARCHITECTURE.md)；路径、环境、换行和云盘同步约定见 [跨平台编程与协作规范](docs/CROSS_PLATFORM_PROGRAMMING.md)。
 
 ## 测试与检查
 
