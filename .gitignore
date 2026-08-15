@@ -22,6 +22,7 @@ common.env
 *.jpeg
 *.png
 *.ttf
+!assets/app_icon/mp3_processor.png
 
 # Python bytecode and caches
 __pycache__/

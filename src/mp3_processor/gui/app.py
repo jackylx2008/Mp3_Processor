@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import sys
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
@@ -46,10 +47,38 @@ class Mp3ProcessorApp:
         self.root.after(self.POLL_INTERVAL_MS, self._poll_messages)
 
     def _configure_window(self) -> None:
-        self.root.minsize(980, 720)
+        self.root.minsize(880, 650)
+        self._set_window_icon()
         style = ttk.Style(self.root)
         style.configure("Accent.TButton", font=("TkDefaultFont", 11, "bold"), padding=(14, 8))
         style.configure("Status.TLabel", padding=(8, 5))
+
+    def _set_window_icon(self) -> None:
+        """按当前平台设置标题栏、任务栏或 Dock 图标。"""
+        icon_root = self.project_root / "assets" / "app_icon"
+        png_path = icon_root / "mp3_processor.png"
+        ico_path = icon_root / "mp3_processor.ico"
+        self.window_icon: tk.PhotoImage | None = None
+        try:
+            self.window_icon = tk.PhotoImage(master=self.root, file=png_path)
+            self.root.iconphoto(True, self.window_icon)
+        except (OSError, tk.TclError) as exc:
+            logging.getLogger(__name__).warning("PNG 应用图标加载失败: %s", exc)
+        try:
+            if sys.platform == "win32" and ico_path.is_file():
+                self.root.iconbitmap(default=str(ico_path))
+            elif sys.platform == "darwin":
+                self.root.tk.call(
+                    "::tk::mac::iconBitmap",
+                    "Mp3Processor",
+                    512,
+                    512,
+                    "-imageFile",
+                    str(png_path),
+                )
+                self.root.iconbitmap("Mp3Processor")
+        except (OSError, tk.TclError) as exc:
+            logging.getLogger(__name__).warning("平台原生应用图标加载失败: %s", exc)
 
     def _build_layout(self) -> None:
         self.root.columnconfigure(0, weight=1)
@@ -58,7 +87,7 @@ class Mp3ProcessorApp:
         self.config_variable = tk.StringVar(self.root, str(self.config_path))
 
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.grid(row=0, column=0, sticky="nsew", padx=14, pady=(12, 8))
+        self.notebook.grid(row=0, column=0, sticky="nsew", padx=10, pady=(8, 3))
         common = {
             "project_root": self.project_root,
             "context_provider": lambda: self.context,
@@ -72,8 +101,8 @@ class Mp3ProcessorApp:
             self.notebook.add(tab, text=tab.title)
         self._add_config_tab()
 
-        log_frame = ttk.LabelFrame(self.root, text="运行日志与实时输出 (Execution Log & Console Output)", padding=8)
-        log_frame.grid(row=1, column=0, sticky="nsew", padx=14, pady=8)
+        log_frame = ttk.LabelFrame(self.root, text="运行日志与实时输出 (Execution Log & Console Output)", padding=6)
+        log_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(3, 4))
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(1, weight=1)
         ttk.Button(log_frame, text="清空日志", command=self._clear_log, width=10).grid(row=0, column=0, sticky="e", pady=(0, 5))
@@ -91,7 +120,7 @@ class Mp3ProcessorApp:
         self._configure_log_colors()
 
         status = ttk.Frame(self.root)
-        status.grid(row=2, column=0, sticky="ew", padx=14, pady=(0, 10))
+        status.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 6))
         status.columnconfigure(0, weight=1)
         self.status_variable = tk.StringVar(self.root, "状态：就绪")
         self.ffmpeg_variable = tk.StringVar(self.root, "FFmpeg：检查中")
@@ -102,20 +131,20 @@ class Mp3ProcessorApp:
         ttk.Label(status, text=f"Python Tkinter / Tk {tk.TkVersion}", style="Status.TLabel").grid(row=1, column=2, sticky="e")
 
     def _add_config_tab(self) -> None:
-        config_tab = ttk.Frame(self.notebook, padding=18)
+        config_tab = ttk.Frame(self.notebook, padding=12)
         config_tab.columnconfigure(0, weight=1)
-        config_group = ttk.LabelFrame(config_tab, text="全局配置文件 (Config)", padding=16)
+        config_group = ttk.LabelFrame(config_tab, text="全局配置文件 (Config)", padding=10)
         config_group.grid(row=0, column=0, sticky="ew")
         config_group.columnconfigure(1, weight=1)
-        ttk.Label(config_group, text="配置文件路径").grid(row=0, column=0, sticky="w", padx=(0, 14), pady=7)
-        ttk.Entry(config_group, textvariable=self.config_variable).grid(row=0, column=1, sticky="ew", pady=7)
-        ttk.Button(config_group, text="浏览…", command=self._browse_config, width=10).grid(row=0, column=2, padx=(8, 4), pady=7)
-        ttk.Button(config_group, text="重新加载", command=self._reload_config, width=12).grid(row=0, column=3, padx=(4, 0), pady=7)
+        ttk.Label(config_group, text="配置文件路径").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=4)
+        ttk.Entry(config_group, textvariable=self.config_variable).grid(row=0, column=1, sticky="ew", pady=4)
+        ttk.Button(config_group, text="浏览…", command=self._browse_config, width=10).grid(row=0, column=2, padx=(6, 3), pady=4)
+        ttk.Button(config_group, text="重新加载", command=self._reload_config, width=12).grid(row=0, column=3, padx=(3, 0), pady=4)
         ttk.Label(
             config_group,
             text="重新加载会用 YAML 中的初始值刷新五个工作流页签；界面修改不会自动写回配置文件。",
             foreground="#666666",
-        ).grid(row=1, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        ).grid(row=1, column=0, columnspan=4, sticky="w", pady=(4, 0))
         self.notebook.add(config_tab, text="全局配置")
 
     def _configure_log_colors(self) -> None:
@@ -144,7 +173,7 @@ class Mp3ProcessorApp:
         self.context = AppContext(self.project_root, config, get_logger("mp3_processor.gui"))
         self.config_variable.set(str(path))
         self.root.title(str(app_config.get("title", "MP3 Processor GUI")))
-        geometry = str(ui_config.get("geometry", "1380x900"))
+        geometry = str(ui_config.get("geometry", "1104x760"))
         if "x" in geometry:
             self.root.geometry(geometry)
         self.max_log_lines = max(100, int(ui_config.get("max_log_lines", 2000)))
@@ -323,7 +352,22 @@ def run_gui(project_root: Path, config_path: Path) -> int:
         log_level=app_config.get("log_level", "INFO"),
         log_file=project_root / "logs" / "gui.log",
     )
+    _set_windows_app_id()
     root = tk.Tk()
     Mp3ProcessorApp(root, project_root, config_path.resolve(), config)
     root.mainloop()
     return 0
+
+
+def _set_windows_app_id() -> None:
+    """让 Windows 任务栏把程序识别为独立应用，而不是 Python。"""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(  # type: ignore[attr-defined]
+            "jackylx2008.Mp3Processor"
+        )
+    except (AttributeError, OSError):
+        logging.getLogger(__name__).warning("无法设置 Windows AppUserModelID")

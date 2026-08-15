@@ -4,7 +4,7 @@ app:
   ffmpeg: "${FFMPEG_PATH:-ffmpeg}"
 
 ui:
-  geometry: "1380x900"
+  geometry: "1104x760"
   max_log_lines: 2000
 
 workflows:

@@ -27,7 +27,7 @@ class PathField(ttk.Frame):
         self.filetypes = filetypes
         self.columnconfigure(0, weight=1)
         ttk.Entry(self, textvariable=variable).grid(row=0, column=0, sticky="ew")
-        ttk.Button(self, text="选择…", command=self._browse, width=10).grid(row=0, column=1, padx=(8, 0))
+        ttk.Button(self, text="选择…", command=self._browse, width=10).grid(row=0, column=1, padx=(6, 0))
 
     def _browse(self) -> None:
         current = Path(self.variable.get()).expanduser() if self.variable.get().strip() else self.project_root

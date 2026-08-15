@@ -8,6 +8,8 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 from typing import Any
 
+from PIL import Image, ImageOps, ImageTk, UnidentifiedImageError
+
 from mp3_processor.context import AppContext
 from mp3_processor.execution import CancellationToken, ProgressCallback
 from mp3_processor.flows import (
@@ -42,7 +44,7 @@ class WorkflowTab(ttk.Frame):
         cancel_callback: Callable[[], None],
         preview_callback: PreviewCallback,
     ) -> None:
-        super().__init__(parent, padding=18)
+        super().__init__(parent, padding=12)
         self.project_root = project_root
         self.context_provider = context_provider
         self.start_callback = start_callback
@@ -63,14 +65,14 @@ class WorkflowTab(ttk.Frame):
         mode: str = "directory",
         filetypes: tuple[tuple[str, str], ...] = (("所有文件", "*"),),
     ) -> None:
-        ttk.Label(self.form, text=label).grid(row=row, column=0, sticky="w", padx=(0, 14), pady=7)
+        ttk.Label(self.form, text=label).grid(row=row, column=0, sticky="w", padx=(0, 10), pady=4)
         PathField(
             self.form,
             variable=variable,
             project_root=self.project_root,
             mode=mode,  # type: ignore[arg-type]
             filetypes=filetypes,
-        ).grid(row=row, column=1, columnspan=5, sticky="ew", pady=7)
+        ).grid(row=row, column=1, columnspan=5, sticky="ew", pady=4)
 
     def add_entry(
         self,
@@ -81,16 +83,16 @@ class WorkflowTab(ttk.Frame):
         width: int = 18,
         values: tuple[str, ...] | None = None,
     ) -> None:
-        ttk.Label(self.form, text=label).grid(row=row, column=0, sticky="w", padx=(0, 14), pady=7)
+        ttk.Label(self.form, text=label).grid(row=row, column=0, sticky="w", padx=(0, 10), pady=4)
         if values:
             widget = ttk.Combobox(self.form, textvariable=variable, values=values, width=width, state="readonly")
         else:
             widget = ttk.Entry(self.form, textvariable=variable, width=width)
-        widget.grid(row=row, column=1, sticky="w", pady=7)
+        widget.grid(row=row, column=1, sticky="w", pady=4)
 
     def add_actions(self, row: int) -> None:
         actions = ttk.Frame(self.form)
-        actions.grid(row=row, column=0, columnspan=6, sticky="e", pady=(22, 0))
+        actions.grid(row=row, column=0, columnspan=6, sticky="e", pady=(10, 0))
         ttk.Button(actions, text="参数预览", command=self._preview, width=16).pack(side="left", padx=6)
         self.run_button = ttk.Button(actions, text="▶ 开始执行", command=self._start, style="Accent.TButton", width=18)
         self.run_button.pack(side="left", padx=6)
@@ -173,18 +175,19 @@ class ConvertTab(WorkflowTab):
         self.validate_output = tk.BooleanVar(self, True)
         self.extensions = {name: tk.BooleanVar(self, name in {"m4a", "mp4", "wma"}) for name in ("m4a", "mp4", "wma", "wav", "flac")}
 
-        paths = ttk.LabelFrame(self.form, text="路径配置", padding=14)
-        paths.grid(row=0, column=0, columnspan=6, sticky="ew", pady=(0, 14))
+        container = self.form
+        paths = ttk.LabelFrame(container, text="路径配置", padding=10)
+        paths.grid(row=0, column=0, columnspan=6, sticky="ew", pady=(0, 8))
         paths.columnconfigure(1, weight=1)
         self.form = paths
         self.add_path(0, "输入目录 (Input Dir)", self.input_path)
         self.add_path(1, "输出目录 (Output Dir)", self.output_dir)
 
-        options = ttk.LabelFrame(self, text="转换参数", padding=14)
-        options.grid(row=1, column=0, sticky="ew")
+        options = ttk.LabelFrame(container, text="转换参数", padding=10)
+        options.grid(row=1, column=0, columnspan=6, sticky="ew")
         options.columnconfigure(1, weight=1)
         self.form = options
-        ttk.Label(options, text="支持的源格式").grid(row=0, column=0, sticky="w", padx=(0, 14), pady=7)
+        ttk.Label(options, text="支持的源格式").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=4)
         extension_box = ttk.Frame(options)
         extension_box.grid(row=0, column=1, columnspan=5, sticky="w")
         for name, variable in self.extensions.items():
@@ -195,9 +198,9 @@ class ConvertTab(WorkflowTab):
         ttk.Label(options, text="最大递归深度 (0=无限制)").grid(row=1, column=4, sticky="e", padx=(24, 12))
         ttk.Entry(options, textvariable=self.max_depth, width=10).grid(row=1, column=5, sticky="w")
         controls = ttk.Frame(options)
-        controls.grid(row=2, column=0, columnspan=6, sticky="w", pady=10)
-        ttk.Checkbutton(controls, text="递归扫描子目录", variable=self.recursive).pack(side="left", padx=(0, 24))
-        ttk.Checkbutton(controls, text="覆盖已有文件", variable=self.overwrite).pack(side="left", padx=(0, 24))
+        controls.grid(row=2, column=0, columnspan=6, sticky="w", pady=5)
+        ttk.Checkbutton(controls, text="递归扫描子目录", variable=self.recursive).pack(side="left", padx=(0, 16))
+        ttk.Checkbutton(controls, text="覆盖已有文件", variable=self.overwrite).pack(side="left", padx=(0, 16))
         ttk.Checkbutton(controls, text="校验输出有效性", variable=self.validate_output).pack(side="left")
         self.add_actions(3)
 
@@ -250,9 +253,9 @@ class MetadataTab(WorkflowTab):
         self.add_entry(1, "艺术家 (Artist)", self.artist)
         self.add_entry(2, "专辑 (Album)", self.album)
         self.add_entry(3, "最大文件数 (0=无限制)", self.max_files)
-        ttk.Checkbutton(self.form, text="递归扫描子目录", variable=self.recursive).grid(row=4, column=0, columnspan=2, sticky="w", pady=7)
-        ttk.Checkbutton(self.form, text="将文件夹名加入专辑", variable=self.include_folder).grid(row=5, column=0, columnspan=2, sticky="w", pady=7)
-        ttk.Checkbutton(self.form, text="实际写入（未选中时仅预览）", variable=self.write).grid(row=6, column=0, columnspan=2, sticky="w", pady=7)
+        ttk.Checkbutton(self.form, text="递归扫描子目录", variable=self.recursive).grid(row=4, column=0, columnspan=2, sticky="w", pady=4)
+        ttk.Checkbutton(self.form, text="将文件夹名加入专辑", variable=self.include_folder).grid(row=5, column=0, columnspan=2, sticky="w", pady=4)
+        ttk.Checkbutton(self.form, text="实际写入（未选中时仅预览）", variable=self.write).grid(row=6, column=0, columnspan=2, sticky="w", pady=4)
         self.add_actions(7)
 
     def collect_parameters(self) -> dict[str, object]:
@@ -292,15 +295,15 @@ class PrepareCoverTab(WorkflowTab):
         self.overwrite = tk.BooleanVar(self, False)
         self.add_path(0, "图片输入目录", self.input_path)
         self.add_path(1, "图片输出目录", self.output_dir)
-        ttk.Label(self.form, text="裁剪区域 (左/上/右/下)").grid(row=2, column=0, sticky="w", pady=7)
+        ttk.Label(self.form, text="裁剪区域 (左/上/右/下)").grid(row=2, column=0, sticky="w", pady=4)
         crop_box = ttk.Frame(self.form)
         crop_box.grid(row=2, column=1, sticky="w")
         for label, variable in zip(("左", "上", "右", "下"), self.crop_values, strict=True):
             ttk.Label(crop_box, text=label).pack(side="left", padx=(0, 4))
             ttk.Entry(crop_box, textvariable=variable, width=8).pack(side="left", padx=(0, 12))
         self.add_entry(3, "最大文件数 (0=无限制)", self.max_files)
-        ttk.Checkbutton(self.form, text="递归扫描子目录", variable=self.recursive).grid(row=4, column=0, columnspan=2, sticky="w", pady=7)
-        ttk.Checkbutton(self.form, text="覆盖已有图片", variable=self.overwrite).grid(row=5, column=0, columnspan=2, sticky="w", pady=7)
+        ttk.Checkbutton(self.form, text="递归扫描子目录", variable=self.recursive).grid(row=4, column=0, columnspan=2, sticky="w", pady=4)
+        ttk.Checkbutton(self.form, text="覆盖已有图片", variable=self.overwrite).grid(row=5, column=0, columnspan=2, sticky="w", pady=4)
         self.add_actions(6)
 
     def collect_parameters(self) -> dict[str, object]:
@@ -332,6 +335,7 @@ class PrepareCoverTab(WorkflowTab):
 
 class ApplyCoverTab(WorkflowTab):
     title = "封面嵌入"
+    PREVIEW_SIZE = (280, 280)
 
     def __init__(self, parent: tk.Misc, **kwargs: Any) -> None:
         super().__init__(parent, **kwargs)
@@ -341,6 +345,18 @@ class ApplyCoverTab(WorkflowTab):
         self.recursive = tk.BooleanVar(self, True)
         self.replace_existing = tk.BooleanVar(self, True)
         self.write = tk.BooleanVar(self, False)
+        self.preview_details = tk.StringVar(self, "尚未选择封面图片")
+        self.preview_image: ImageTk.PhotoImage | None = None
+        self.preview_job: str | None = None
+
+        container = self.form
+        container.columnconfigure(0, weight=3)
+        container.columnconfigure(1, weight=2)
+        container.rowconfigure(0, weight=1)
+        settings = ttk.LabelFrame(container, text="嵌入设置", padding=10)
+        settings.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        settings.columnconfigure(1, weight=1)
+        self.form = settings
         self.add_path(0, "音频输入目录", self.input_path)
         self.add_path(
             1,
@@ -350,10 +366,32 @@ class ApplyCoverTab(WorkflowTab):
             filetypes=(("封面图片", "*.png *.jpg *.jpeg"), ("所有文件", "*")),
         )
         self.add_entry(2, "最大文件数 (0=无限制)", self.max_files)
-        ttk.Checkbutton(self.form, text="递归扫描子目录", variable=self.recursive).grid(row=3, column=0, columnspan=2, sticky="w", pady=7)
-        ttk.Checkbutton(self.form, text="替换已有封面", variable=self.replace_existing).grid(row=4, column=0, columnspan=2, sticky="w", pady=7)
-        ttk.Checkbutton(self.form, text="实际写入（未选中时仅预览）", variable=self.write).grid(row=5, column=0, columnspan=2, sticky="w", pady=7)
+        ttk.Checkbutton(self.form, text="递归扫描子目录", variable=self.recursive).grid(row=3, column=0, columnspan=2, sticky="w", pady=4)
+        ttk.Checkbutton(self.form, text="替换已有封面", variable=self.replace_existing).grid(row=4, column=0, columnspan=2, sticky="w", pady=4)
+        ttk.Checkbutton(self.form, text="实际写入（未选中时仅预览）", variable=self.write).grid(row=5, column=0, columnspan=2, sticky="w", pady=4)
         self.add_actions(6)
+
+        preview = ttk.LabelFrame(container, text="封面预览", padding=10)
+        preview.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        preview.columnconfigure(0, weight=1)
+        preview.rowconfigure(0, weight=1)
+        self.preview_label = ttk.Label(
+            preview,
+            text="尚未选择封面图片",
+            anchor="center",
+            justify="center",
+            width=32,
+        )
+        self.preview_label.grid(row=0, column=0, sticky="nsew")
+        ttk.Separator(preview).grid(row=1, column=0, sticky="ew", pady=(8, 6))
+        ttk.Label(
+            preview,
+            textvariable=self.preview_details,
+            anchor="center",
+            justify="center",
+            wraplength=290,
+        ).grid(row=2, column=0, sticky="ew")
+        self.cover_image.trace_add("write", self._schedule_preview)
 
     def collect_parameters(self) -> dict[str, object]:
         return {
@@ -376,6 +414,39 @@ class ApplyCoverTab(WorkflowTab):
         self.replace_existing.set(bool(config.get("replace_existing", True)))
         self.write.set(bool(config.get("write", False)))
 
+    def _schedule_preview(self, *_args: object) -> None:
+        if self.preview_job is not None:
+            self.after_cancel(self.preview_job)
+        self.preview_job = self.after(150, self._update_preview)
+
+    def _update_preview(self) -> None:
+        self.preview_job = None
+        value = self.cover_image.get().strip()
+        if not value:
+            self._clear_preview("尚未选择封面图片")
+            return
+        path = Path(value).expanduser()
+        if not path.is_absolute():
+            path = self.project_root / path
+        if not path.is_file():
+            self._clear_preview(f"图片不存在\n{path.name}")
+            return
+        try:
+            with Image.open(path) as source:
+                width, height = source.size
+                preview = ImageOps.exif_transpose(source).convert("RGBA")
+                preview.thumbnail(self.PREVIEW_SIZE, Image.Resampling.LANCZOS)
+            self.preview_image = ImageTk.PhotoImage(preview, master=self)
+            self.preview_label.configure(image=self.preview_image, text="")
+            self.preview_details.set(f"{path.name}\n{width} × {height} px")
+        except (OSError, UnidentifiedImageError) as exc:
+            self._clear_preview(f"无法预览图片\n{exc}")
+
+    def _clear_preview(self, message: str) -> None:
+        self.preview_image = None
+        self.preview_label.configure(image="", text=message)
+        self.preview_details.set(message)
+
 
 class SplitAudioTab(WorkflowTab):
     title = "音频分割"
@@ -392,7 +463,7 @@ class SplitAudioTab(WorkflowTab):
         self.extensions = {name: tk.BooleanVar(self, name in {"mp3", "m4a"}) for name in ("mp3", "m4a", "wma", "wav", "flac")}
         self.add_path(0, "音频输入目录", self.input_path)
         self.add_path(1, "分段输出目录", self.output_dir)
-        ttk.Label(self.form, text="输入格式").grid(row=2, column=0, sticky="w", pady=7)
+        ttk.Label(self.form, text="输入格式").grid(row=2, column=0, sticky="w", pady=4)
         extension_box = ttk.Frame(self.form)
         extension_box.grid(row=2, column=1, columnspan=5, sticky="w")
         for name, variable in self.extensions.items():
@@ -400,8 +471,8 @@ class SplitAudioTab(WorkflowTab):
         self.add_entry(3, "每段时长（分钟）", self.duration_minutes)
         self.add_entry(4, "输出比特率", self.bitrate, values=("128k", "192k", "256k", "320k"))
         self.add_entry(5, "最大文件数 (0=无限制)", self.max_files)
-        ttk.Checkbutton(self.form, text="递归扫描子目录", variable=self.recursive).grid(row=6, column=0, columnspan=2, sticky="w", pady=7)
-        ttk.Checkbutton(self.form, text="覆盖已有分段", variable=self.overwrite).grid(row=7, column=0, columnspan=2, sticky="w", pady=7)
+        ttk.Checkbutton(self.form, text="递归扫描子目录", variable=self.recursive).grid(row=6, column=0, columnspan=2, sticky="w", pady=4)
+        ttk.Checkbutton(self.form, text="覆盖已有分段", variable=self.overwrite).grid(row=7, column=0, columnspan=2, sticky="w", pady=4)
         self.add_actions(8)
 
     def collect_parameters(self) -> dict[str, object]:

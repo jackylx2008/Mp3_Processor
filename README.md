@@ -140,6 +140,8 @@ Mp3_Processor/
 └── logs/                          # 运行日志（不提交 Git）
 ```
 
+桌面图标资源位于 `assets/app_icon/`：运行时使用 PNG，Windows 使用多尺寸 ICO，macOS ICNS 可用于应用打包。GUI 启动时会按平台设置标题栏、任务栏或 Dock 图标。
+
 模块层不读取业务配置，也不决定完整执行路径；flows 通过 `AppContext` 获取配置并组合模块；GUI 只负责收集参数、启动后台任务和显示结构化反馈。
 
 更详细的依赖方向、配置生命周期和扩展步骤见 [架构说明](docs/ARCHITECTURE.md)；路径、环境、换行和云盘同步约定见 [跨平台编程与协作规范](docs/CROSS_PLATFORM_PROGRAMMING.md)。
