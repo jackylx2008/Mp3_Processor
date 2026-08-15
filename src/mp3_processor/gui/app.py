@@ -68,15 +68,7 @@ class Mp3ProcessorApp:
             if sys.platform == "win32" and ico_path.is_file():
                 self.root.iconbitmap(default=str(ico_path))
             elif sys.platform == "darwin":
-                self.root.tk.call(
-                    "::tk::mac::iconBitmap",
-                    "Mp3Processor",
-                    512,
-                    512,
-                    "-imageFile",
-                    str(png_path),
-                )
-                self.root.iconbitmap("Mp3Processor")
+                _set_macos_app_icon(png_path)
         except (OSError, tk.TclError) as exc:
             logging.getLogger(__name__).warning("平台原生应用图标加载失败: %s", exc)
 
@@ -371,3 +363,68 @@ def _set_windows_app_id() -> None:
         )
     except (AttributeError, OSError):
         logging.getLogger(__name__).warning("无法设置 Windows AppUserModelID")
+
+
+def _set_macos_app_icon(icon_path: Path) -> bool:
+    """通过 AppKit 设置 Dock 和应用切换器图标，不修改窗口标题栏。"""
+    if sys.platform != "darwin":
+        return False
+    try:
+        import ctypes
+        import ctypes.util
+
+        appkit_path = ctypes.util.find_library("AppKit")
+        objc_path = ctypes.util.find_library("objc")
+        if not appkit_path or not objc_path:
+            raise OSError("找不到 macOS AppKit 或 Objective-C Runtime")
+        ctypes.cdll.LoadLibrary(appkit_path)
+        objc = ctypes.cdll.LoadLibrary(objc_path)
+        objc.objc_getClass.argtypes = [ctypes.c_char_p]
+        objc.objc_getClass.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+
+        message_address = ctypes.cast(objc.objc_msgSend, ctypes.c_void_p).value
+        if message_address is None:
+            raise OSError("找不到 objc_msgSend")
+        send = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)(message_address)
+        send_cstring = ctypes.CFUNCTYPE(
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_char_p,
+        )(message_address)
+        send_object = ctypes.CFUNCTYPE(
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(message_address)
+
+        def get_class(name: str) -> int:
+            return objc.objc_getClass(name.encode("ascii"))
+
+        def get_selector(name: str) -> int:
+            return objc.sel_registerName(name.encode("ascii"))
+
+        application = send(get_class("NSApplication"), get_selector("sharedApplication"))
+        ns_path = send_cstring(
+            get_class("NSString"),
+            get_selector("stringWithUTF8String:"),
+            str(icon_path.resolve()).encode("utf-8"),
+        )
+        image = send_object(
+            send(get_class("NSImage"), get_selector("alloc")),
+            get_selector("initWithContentsOfFile:"),
+            ns_path,
+        )
+        if not application or not image:
+            raise OSError(f"AppKit 无法读取应用图标: {icon_path}")
+        try:
+            send_object(application, get_selector("setApplicationIconImage:"), image)
+            return bool(send(application, get_selector("applicationIconImage")))
+        finally:
+            send(image, get_selector("release"))
+    except (AttributeError, OSError, TypeError, ValueError) as exc:
+        logging.getLogger(__name__).warning("macOS 应用图标加载失败: %s", exc)
+        return False
