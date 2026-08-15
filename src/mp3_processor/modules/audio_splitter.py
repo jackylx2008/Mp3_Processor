@@ -6,6 +6,7 @@ from pathlib import Path
 
 from pydub import AudioSegment
 
+from mp3_processor.execution import CancellationToken, check_cancelled
 from mp3_processor.modules.audio_converter import require_ffmpeg, validate_audio
 
 
@@ -17,6 +18,7 @@ def split_audio(
     bitrate: str = "192k",
     overwrite: bool = False,
     ffmpeg_executable: str = "ffmpeg",
+    cancel_token: CancellationToken | None = None,
 ) -> list[Path]:
     """按固定分钟数切分音频，保留最后一个不足时长的片段。"""
     if duration_minutes <= 0:
@@ -38,6 +40,7 @@ def split_audio(
     outputs: list[Path] = []
     try:
         for start, destination in zip(starts, destinations, strict=True):
+            check_cancelled(cancel_token)
             audio[start : start + duration_ms].export(destination, format="mp3", bitrate=bitrate)
             if not validate_audio(destination, ffmpeg_executable):
                 raise RuntimeError(f"切分结果无法解码: {destination}")

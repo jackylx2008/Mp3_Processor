@@ -15,10 +15,10 @@ class AppContext:
     logger: logging.Logger
 
     def flow_config(self, name: str) -> dict[str, Any]:
-        flows = self.config.get("flows", {})
+        flows = self.config.get("workflows", self.config.get("flows", {}))
         value = flows.get(name, {})
         if not isinstance(value, dict):
-            raise ValueError(f"flows.{name} 必须是映射")
+            raise ValueError(f"workflows.{name} 必须是映射")
         return value
 
     def resolve_path(self, value: str | Path) -> Path:
