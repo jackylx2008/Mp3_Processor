@@ -1,0 +1,56 @@
+app:
+  title: "MP3 Processor GUI"
+  log_level: "${LOG_LEVEL:-INFO}"
+  ffmpeg: "${FFMPEG_PATH:-ffmpeg}"
+
+ui:
+  geometry: "1104x760"
+  max_log_lines: 2000
+
+workflows:
+  convert_audio:
+    input_path: "${CONVERT_INPUT_PATH:-mp3_files/input}"
+    output_dir: "${CONVERT_OUTPUT_DIR:-output/converted}"
+    input_extensions: [mp3, m4a, mp4, wma]
+    output_type: "${CONVERT_OUTPUT_TYPE:-mp3}"
+    recursive: true
+    max_depth: 0
+    bitrate: "${CONVERT_BITRATE:-192k}"
+    overwrite: false
+    validate_output: true
+    max_files: 0
+
+  update_metadata:
+    input_path: "${METADATA_INPUT_PATH:-mp3_files/input}"
+    recursive: true
+    artist: "${AUDIO_ARTIST:-}"
+    album: "${AUDIO_ALBUM:-}"
+    include_folder_in_album: true
+    write: false
+    max_files: 0
+
+  prepare_cover:
+    input_path: "${COVER_SOURCE_DIR:-assets/cover_images/input}"
+    output_dir: "${COVER_OUTPUT_DIR:-output/covers}"
+    crop_box: [117, 745, 1177, 1805]
+    recursive: true
+    overwrite: false
+    max_files: 0
+
+  apply_cover:
+    input_path: "${COVER_AUDIO_INPUT_PATH:-mp3_files/input}"
+    cover_image: "${COVER_IMAGE:-assets/cover_images/cover.png}"
+    recursive: true
+    replace_existing: true
+    write: false
+    max_files: 0
+
+  split_audio:
+    input_path: "${SPLIT_INPUT_PATH:-mp3_files/input}"
+    output_dir: "${SPLIT_OUTPUT_DIR:-output/split}"
+    input_extensions: [mp3, m4a]
+    recursive: true
+    duration_minutes: 30
+    bitrate: "${SPLIT_BITRATE:-192k}"
+    overwrite: false
+    max_files: 0

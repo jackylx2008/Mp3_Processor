@@ -2,12 +2,14 @@ app:
   log_level: "${LOG_LEVEL:-INFO}"
   input_path: "${INPUT_PATH:-mp3_files/input}"
   output_dir: "${OUTPUT_DIR:-output}"
+  cloudstation_root: "${CLOUDSTATION_ROOT}"
 
 flows:
   convert_audio:
     input_path: "${CONVERT_INPUT_PATH:-mp3_files/input}"
     output_dir: "${CONVERT_OUTPUT_DIR:-output/converted}"
-    input_extensions: [m4a, mp4, wma]
+    input_extensions: [mp3, m4a, mp4, wma]
+    output_type: "${CONVERT_OUTPUT_TYPE:-mp3}"
     recursive: true
     max_depth: 0
     bitrate: "${CONVERT_BITRATE:-192k}"
@@ -46,5 +48,6 @@ flows:
     recursive: true
     duration_minutes: 30
     bitrate: "${SPLIT_BITRATE:-192k}"
+    ffmpeg: "${FFMPEG_PATH:-ffmpeg}"
     overwrite: false
     max_files: 0

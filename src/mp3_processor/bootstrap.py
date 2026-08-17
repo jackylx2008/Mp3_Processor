@@ -18,6 +18,6 @@ def bootstrap_context(entry_file: str, config_file: str = "config.yaml") -> AppC
     app_config = config.get("app", {})
     setup_logger(
         log_level=app_config.get("log_level", "INFO"),
-        log_file=project_root / "log" / f"{Path(entry_file).stem}.log",
+        log_file=project_root / "logs" / f"{Path(entry_file).stem}.log",
     )
     return AppContext(project_root, config, get_logger(Path(entry_file).stem))

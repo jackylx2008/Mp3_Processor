@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Tkinter Workflow GUI"
+  short_description: "构建可取消、可观测的跨平台 Tkinter 工作流界面"
+  default_prompt: "Use $build-tkinter-workflow-gui to design and implement a compact cross-platform Tkinter workflow application."

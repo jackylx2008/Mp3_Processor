@@ -1,6 +1,7 @@
 *.jpg
 *.jpeg
 *.png
+!assets/app_icon/*.png
 *.mp3
 *.mp4
 *.m4a
@@ -150,6 +151,7 @@ celerybeat.pid
 
 # Environments
 .env
+.conda/
 .venv
 env/
 venv/

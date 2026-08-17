@@ -5,20 +5,24 @@
 项目只允许依赖由外向内流动：
 
 ```text
-根目录入口脚本
+Tkinter GUI / 根目录入口
     ↓
 flows 场景编排层
     ↓
 modules 基础能力层
 ```
 
-`config_loader.py`、`context.py` 和 `logging_config.py` 为三层提供公共基础设施。基础模块不能反向导入 flow 或入口脚本。
+`config_loader.py`、`context.py`、`platform_tools.py` 和 `logging_config.py` 为三层提供公共基础设施。基础模块不能反向导入 flow 或入口脚本。
 
 ## 各层职责
 
-### 根目录入口
+### GUI 与根目录入口
 
-入口脚本负责解析命令行参数、创建 `AppContext`、调用一个 flow，并输出结构化结果。入口不实现文件遍历、音频读写或图片处理。
+`gui.py` 是主要桌面入口，默认读取 `ui_config.yaml`。`src/mp3_processor/gui/` 负责窗口、表单、后台任务、日志和状态显示，不实现文件遍历、音频读写或图片处理。
+
+GUI 主线程只更新控件。工作流在单独的后台线程中执行，通过线程安全队列发送进度和日志；同一时间只允许一个任务。`CancellationToken` 在文件或分段边界协作式停止任务。
+
+原有根目录 CLI 入口仍可用于开发和排障，但不属于 UI 配置接口：
 
 当前入口：
 
@@ -48,11 +52,14 @@ modules 提供小而稳定的能力：
 
 ## 配置生命周期
 
-1. `bootstrap_context()` 定位项目根目录和 `config.yaml`。
+1. GUI 定位项目根目录和 `ui_config.yaml`，CLI 可继续读取 `config.yaml`。
 2. `config_loader` 先读取 `common.env`，但不覆盖进程中已有的环境变量。
-3. YAML 中的 `${ENV_VAR:-default}` 被递归展开。
-4. `AppContext.resolve_path()` 将相对路径统一解释为相对项目根目录。
-5. flow 只读取自己的 `flows.<name>` 节点。
+3. `config_loader` 按 Windows、macOS 或 Linux 选择对应的 `CLOUDSTATION_ROOT_*`，显式的 `CLOUDSTATION_ROOT` 优先。
+4. YAML 中的 `${ENV_VAR:-default}` 被递归展开。
+5. `AppContext.resolve_path()` 将相对路径统一解释为相对项目根目录。
+6. GUI flow 读取自己的 `workflows.<name>` 节点；运行时表单参数优先于配置初始值。
+
+界面中的修改只影响本次运行，不写回 YAML。重新加载配置只允许在没有任务运行时执行。
 
 真实机器路径只放在 `common.env`。仓库中的 `config.yaml` 和 `common.env.example` 使用相对路径或通用示例。
 
@@ -64,6 +71,8 @@ modules 提供小而稳定的能力：
 - `--max-files` 可用于小批量验证。
 - 切分开始前会检查整组目标文件，避免发现冲突时只生成部分分段。
 - 所有工作流用 `FlowResult` 记录成功、跳过、失败和输出路径。
+- 元数据和封面嵌入默认预览，实际写入前由 GUI 二次确认。
+- 取消任务不启动下一个文件；分割任务还会在分段之间检查取消状态。
 
 ## 扩展新工作流
 

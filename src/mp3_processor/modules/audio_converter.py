@@ -2,24 +2,32 @@
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from pathlib import Path
+
+from mp3_processor.platform_tools import resolve_executable
 
 
 class AudioConversionError(RuntimeError):
     """音频转换失败。"""
 
 
+OUTPUT_CODECS = {
+    "mp3": "libmp3lame",
+    "m4a": "aac",
+    "wma": "wmav2",
+    "wav": "pcm_s16le",
+    "flac": "flac",
+    "ogg": "libvorbis",
+}
+
+
 def require_ffmpeg(executable: str = "ffmpeg") -> str:
     """返回 FFmpeg 路径，不可用时抛出清晰异常。"""
-    resolved = shutil.which(executable)
-    if not resolved:
-        raise FileNotFoundError(f"找不到 FFmpeg: {executable}")
-    return resolved
+    return resolve_executable(executable, name="FFmpeg")
 
 
-def convert_to_mp3(
+def convert_audio(
     source: Path,
     destination: Path,
     *,
@@ -27,11 +35,19 @@ def convert_to_mp3(
     overwrite: bool = False,
     ffmpeg_executable: str = "ffmpeg",
 ) -> Path:
-    """将一个音频/视频文件转换为 MP3，不删除源文件。"""
+    """按目标文件扩展名转换音频，不删除源文件。"""
     if not source.is_file():
         raise FileNotFoundError(f"输入文件不存在: {source}")
     if destination.exists() and not overwrite:
         raise FileExistsError(f"输出文件已存在: {destination}")
+
+    output_type = destination.suffix.lower().lstrip(".")
+    try:
+        codec = OUTPUT_CODECS[output_type]
+    except KeyError as exc:
+        supported = ", ".join(OUTPUT_CODECS)
+        raise ValueError(f"不支持的输出类型: {output_type or '<empty>'}；可选: {supported}") from exc
+
     destination.parent.mkdir(parents=True, exist_ok=True)
     command = [
         require_ffmpeg(ffmpeg_executable),
@@ -44,17 +60,38 @@ def convert_to_mp3(
         str(source),
         "-vn",
         "-codec:a",
-        "libmp3lame",
-        "-b:a",
-        bitrate,
-        str(destination),
+        codec,
     ]
+    if output_type not in {"wav", "flac"}:
+        command.extend(["-b:a", bitrate])
+    command.append(str(destination))
+
     completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if completed.returncode != 0:
         destination.unlink(missing_ok=True)
         message = completed.stderr.strip() or "FFmpeg 未返回错误详情"
         raise AudioConversionError(f"转换失败 {source}: {message}")
     return destination
+
+
+def convert_to_mp3(
+    source: Path,
+    destination: Path,
+    *,
+    bitrate: str = "192k",
+    overwrite: bool = False,
+    ffmpeg_executable: str = "ffmpeg",
+) -> Path:
+    """兼容旧调用：将一个音频/视频文件转换为 MP3。"""
+    if destination.suffix.lower() != ".mp3":
+        raise ValueError("convert_to_mp3 的目标文件扩展名必须是 .mp3")
+    return convert_audio(
+        source,
+        destination,
+        bitrate=bitrate,
+        overwrite=overwrite,
+        ffmpeg_executable=ffmpeg_executable,
+    )
 
 
 def validate_audio(path: Path, ffmpeg_executable: str = "ffmpeg") -> bool:
