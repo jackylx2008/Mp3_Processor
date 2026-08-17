@@ -150,6 +150,16 @@ class WorkflowTab(ttk.Frame):
         return value
 
     @staticmethod
+    def positive_int(value: str, label: str) -> int:
+        try:
+            parsed = int(value)
+        except ValueError as exc:
+            raise ValueError(f"{label}必须是整数") from exc
+        if parsed < 1:
+            raise ValueError(f"{label}必须大于 0")
+        return parsed
+
+    @staticmethod
     def nonnegative_int(value: str, label: str) -> int:
         try:
             parsed = int(value)
@@ -171,6 +181,7 @@ class ConvertTab(WorkflowTab):
         self.bitrate = tk.StringVar(self, "192k")
         self.max_files = tk.StringVar(self, "0")
         self.max_depth = tk.StringVar(self, "0")
+        self.workers = tk.StringVar(self, "8")
         self.recursive = tk.BooleanVar(self, True)
         self.overwrite = tk.BooleanVar(self, False)
         self.validate_output = tk.BooleanVar(self, True)
@@ -208,17 +219,22 @@ class ConvertTab(WorkflowTab):
         ttk.Entry(options, textvariable=self.max_files, width=10).grid(row=1, column=5, sticky="w")
         ttk.Label(options, text="最大递归深度 (0=无限制)").grid(row=2, column=0, sticky="w", padx=(0, 10))
         ttk.Entry(options, textvariable=self.max_depth, width=18).grid(row=2, column=1, sticky="w")
+        ttk.Label(options, text="并发任务数").grid(row=2, column=2, sticky="e", padx=(24, 12))
+        ttk.Entry(options, textvariable=self.workers, width=10).grid(row=2, column=3, sticky="w")
         controls = ttk.Frame(options)
-        controls.grid(row=2, column=2, columnspan=4, sticky="w", pady=5)
+        controls.grid(row=3, column=0, columnspan=6, sticky="w", pady=5)
         ttk.Checkbutton(controls, text="递归扫描子目录", variable=self.recursive).pack(side="left", padx=(0, 16))
         ttk.Checkbutton(controls, text="覆盖已有文件", variable=self.overwrite).pack(side="left", padx=(0, 16))
         ttk.Checkbutton(controls, text="校验输出有效性", variable=self.validate_output).pack(side="left")
-        self.add_actions(3)
+        self.add_actions(4)
 
     def collect_parameters(self) -> dict[str, object]:
         extensions = [name for name, variable in self.extensions.items() if variable.get()]
         if not extensions:
             raise ValueError("至少选择一种源格式")
+        workers = self.positive_int(self.workers.get(), "并发任务数")
+        if workers > convert_audio_flow.MAX_CONVERSION_WORKERS:
+            raise ValueError(f"并发任务数不能大于 {convert_audio_flow.MAX_CONVERSION_WORKERS}")
         return {
             "input_path": self.required(self.input_path.get(), "输入目录"),
             "output_dir": self.required(self.output_dir.get(), "输出目录"),
@@ -230,6 +246,7 @@ class ConvertTab(WorkflowTab):
             "overwrite": self.overwrite.get(),
             "validate_output": self.validate_output.get(),
             "max_files": self.nonnegative_int(self.max_files.get(), "最大文件数"),
+            "workers": workers,
         }
 
     def execute(self, context: AppContext, parameters: dict[str, object], token: CancellationToken, progress: ProgressCallback) -> FlowResult:
@@ -242,6 +259,7 @@ class ConvertTab(WorkflowTab):
         self.bitrate.set(config.get("bitrate", "192k"))
         self.max_files.set(str(config.get("max_files", 0)))
         self.max_depth.set(str(config.get("max_depth", 0)))
+        self.workers.set(str(config.get("workers", 8)))
         self.recursive.set(bool(config.get("recursive", True)))
         self.overwrite.set(bool(config.get("overwrite", False)))
         self.validate_output.set(bool(config.get("validate_output", True)))

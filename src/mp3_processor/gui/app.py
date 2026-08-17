@@ -10,6 +10,7 @@ import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
+from time import monotonic
 from typing import Any
 
 from logging_config import LOG_FORMAT, get_logger, setup_logger
@@ -38,6 +39,7 @@ class Mp3ProcessorApp:
         self.tabs: list[WorkflowTab] = []
         self.close_when_done = False
         self.max_log_lines = 2000
+        self.task_started_at: float | None = None
 
         self._configure_window()
         self._build_layout()
@@ -204,6 +206,7 @@ class Mp3ProcessorApp:
         if not self.runner.start(name, task):
             messagebox.showwarning("任务运行中", "当前已有任务正在执行。", parent=self.root)
             return False
+        self.task_started_at = monotonic()
         self.progress.configure(value=0)
         self.status_variable.set(f"状态：正在启动{name}")
         self._set_tabs_running(True)
@@ -244,7 +247,8 @@ class Mp3ProcessorApp:
             self.progress.configure(value=100)
             summary = (
                 f"完成：发现 {result.discovered}，成功 {result.succeeded}，"
-                f"跳过 {result.skipped}，失败 {result.failed}"
+                f"跳过 {result.skipped}，失败 {result.failed}，"
+                f"耗时 {self._finish_elapsed()}"
             )
             self.status_variable.set(f"状态：{summary}")
             self._append_log(summary)
@@ -252,14 +256,23 @@ class Mp3ProcessorApp:
             if result.failed:
                 messagebox.showwarning("任务完成但存在错误", summary, parent=self.root)
         elif message.kind == "cancelled":
-            self.status_variable.set("状态：任务已取消")
-            self._append_log("任务已取消。")
+            elapsed = self._finish_elapsed()
+            self.status_variable.set(f"状态：任务已取消（耗时 {elapsed}）")
+            self._append_log(f"任务已取消，耗时 {elapsed}。")
             self._set_tabs_running(False)
         elif message.kind == "failed":
-            self.status_variable.set("状态：任务执行失败")
-            self._append_log(f"任务执行失败：{message.payload}")
+            elapsed = self._finish_elapsed()
+            self.status_variable.set(f"状态：任务执行失败（耗时 {elapsed}）")
+            self._append_log(f"任务执行失败：{message.payload}；耗时 {elapsed}")
             self._set_tabs_running(False)
             messagebox.showerror("任务执行失败", str(message.payload), parent=self.root)
+
+    def _finish_elapsed(self) -> str:
+        if self.task_started_at is None:
+            return "00:00:00"
+        elapsed = monotonic() - self.task_started_at
+        self.task_started_at = None
+        return _format_duration(elapsed)
 
     def _set_tabs_running(self, running: bool) -> None:
         for tab in self.tabs:
@@ -332,6 +345,13 @@ class Mp3ProcessorApp:
         if not isinstance(value, dict):
             raise ValueError(f"配置项 {key} 必须是映射")
         return value
+
+
+def _format_duration(seconds: float) -> str:
+    total_seconds = max(0, int(round(seconds)))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def run_gui(project_root: Path, config_path: Path) -> int:

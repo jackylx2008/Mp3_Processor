@@ -55,14 +55,14 @@ python gui.py --config-file path/to/ui_config.yaml
 
 窗口包含五个工作流页签和一个“全局配置”页签：
 
-- 音频转换：可选 MP3/M4A/MP4/WMA/WAV/FLAC/OGG 输入，并输出为 MP3/M4A/WMA/WAV/FLAC/OGG。
+- 音频转换：可选 MP3/M4A/MP4/WMA/WAV/FLAC/OGG 输入，并输出为 MP3/M4A/WMA/WAV/FLAC/OGG；默认使用 8 个并发 FFmpeg 任务。
 - 元数据更新：艺术家、专辑、文件夹专辑名和预览/实际写入。
 - 封面裁剪：图片目录、裁剪区域和覆盖选项。
 - 封面嵌入：封面选择、替换策略和预览/实际写入。
 - 音频分割：源格式、分段时长、码率和覆盖选项。
 - 全局配置：选择或重新加载 UI YAML 配置文件。
 
-同一时间只运行一个任务。耗时处理在后台线程执行，窗口通过事件队列显示彩色日志、当前对象和总体进度。点击“取消任务”后，程序会在当前文件或当前分段安全结束后停止，不再启动后续文件。
+同一时间只运行一个工作流任务。耗时处理在后台线程执行，音频转换工作流内部采用有界文件并发。点击“取消任务”后，程序会停止提交新文件，等待已经启动的 FFmpeg 任务安全结束；状态栏会显示真实的 HH:MM:SS 任务耗时。
 
 ## UI 配置
 
@@ -111,9 +111,16 @@ cp common.env.example common.env
 
 转换入口可通过参数覆盖输入和输出类型，例如：
 
-    python convert_audio.py --input-type mp3 m4a --output-type flac --max-files 5
+    python convert_audio.py --input-type mp3 m4a --output-type flac --workers 8 --max-files 5
 
-不传参数时读取 `config.yaml`：`input_extensions` 控制输入类型，`output_type` 控制输出类型；默认包含 MP3 输入并输出 MP3。
+不传参数时读取 `config.yaml`：`input_extensions` 控制输入类型，`output_type` 控制输出类型，`workers` 控制并发任务数（默认 8，范围 1–32）；默认包含 MP3 输入并输出 MP3。命令行参数优先级更高。
+
+## 转换性能
+
+- 建议把输入和输出目录放在本地 SSD/NVMe 硬盘，避免 OneDrive 等同步目录在批量创建文件时成为瓶颈。
+- Ryzen 9 9950X 建议从 8 个并发任务开始；如果 CPU、磁盘仍有余量，可测试 12 或 16。更高并发不一定更快。
+- RTX 5090 的 NVENC 主要用于视频编码，FFmpeg 的 MP3、AAC、FLAC、OGG 等常规音频编码仍以 CPU 为主，因此本项目采用文件级 CPU 并发。
+- 默认保留转换后音频验证以保证输出完整性；关闭验证可以减少少量耗时，但会降低批量任务的安全性。
 
 ## 代码结构
 

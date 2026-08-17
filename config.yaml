@@ -10,6 +10,7 @@ flows:
     output_dir: "${CONVERT_OUTPUT_DIR:-output/converted}"
     input_extensions: [mp3, m4a, mp4, wma]
     output_type: "${CONVERT_OUTPUT_TYPE:-mp3}"
+    workers: "${CONVERT_WORKERS:-8}"
     recursive: true
     max_depth: 0
     bitrate: "${CONVERT_BITRATE:-192k}"

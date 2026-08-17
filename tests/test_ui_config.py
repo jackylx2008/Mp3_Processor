@@ -16,3 +16,4 @@ def test_ui_config_contains_all_workflows() -> None:
         "split_audio",
     }
     assert config["app"]["ffmpeg"]
+    assert config["workflows"]["convert_audio"]["workers"] == "8"

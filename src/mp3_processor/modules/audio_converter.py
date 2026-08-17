@@ -38,6 +38,8 @@ def convert_audio(
     """按目标文件扩展名转换音频，不删除源文件。"""
     if not source.is_file():
         raise FileNotFoundError(f"输入文件不存在: {source}")
+    if source.resolve() == destination.resolve(strict=False):
+        raise ValueError(f"输入和输出不能是同一文件: {source}")
     if destination.exists() and not overwrite:
         raise FileExistsError(f"输出文件已存在: {destination}")
 

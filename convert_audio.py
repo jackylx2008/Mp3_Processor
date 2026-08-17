@@ -12,6 +12,7 @@
   --output       临时覆盖输出目录。
   --input-type   输入格式，可指定多个，例如 --input-type mp3 m4a wav。
   --output-type  输出格式：mp3、m4a、wma、wav、flac 或 ogg。
+  --workers      并发转换数，默认读取配置（推荐 8）。
   --max-files    限制本次处理文件数，0 表示不限制。
 
 示例：
@@ -45,6 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output")
     parser.add_argument("--input-type", "--input-types", nargs="+", choices=INPUT_TYPES)
     parser.add_argument("--output-type", choices=OUTPUT_TYPES)
+    parser.add_argument("--workers", type=int)
     parser.add_argument("--max-files", type=int)
     return parser
 
@@ -59,6 +61,7 @@ def main() -> int:
             output_dir=args.output,
             input_extensions=args.input_type,
             output_type=args.output_type,
+            workers=args.workers,
             max_files=args.max_files,
         )
     )

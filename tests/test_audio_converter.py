@@ -48,3 +48,11 @@ def test_convert_audio_rejects_unknown_output_type(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="不支持的输出类型"):
         audio_converter.convert_audio(source, tmp_path / "output.xyz")
+
+
+def test_convert_audio_rejects_same_input_and_output(tmp_path: Path) -> None:
+    source = tmp_path / "source.mp3"
+    source.write_bytes(b"audio")
+
+    with pytest.raises(ValueError, match="输入和输出不能是同一文件"):
+        audio_converter.convert_audio(source, source)
